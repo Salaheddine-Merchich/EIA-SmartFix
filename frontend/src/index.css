@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-surface: var(--ds-surface);
+  --color-surface-muted: var(--ds-bg);
+  --color-border-default: var(--ds-border);
+  --color-text-default: var(--ds-text);
+  --color-text-muted: var(--ds-text-muted);
+  --color-brand: #059669;
+  --color-brand-hover: #047857;
+  --radius-panel: 0.75rem;
+  --radius-control: 0.5rem;
+}
+
+:root {
+  color-scheme: light;
+  --ds-bg: #f8fafc;
+  --ds-surface: #ffffff;
+  --ds-border: #e2e8f0;
+  --ds-text: #0f172a;
+  --ds-text-muted: #64748b;
+}
+
+.dark {
+  color-scheme: dark;
+  --ds-bg: #020617;
+  --ds-surface: #0f172a;
+  --ds-border: #1e293b;
+  --ds-text: #f1f5f9;
+  --ds-text-muted: #94a3b8;
+}
+
+body {
+  @apply bg-surface-muted text-text-default antialiased dark:bg-slate-950 dark:text-slate-100;
+}
+
+#root {
+  min-height: 100vh;
+}

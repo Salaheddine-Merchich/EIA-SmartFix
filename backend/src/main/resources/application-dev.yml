@@ -1,0 +1,27 @@
+spring:
+  config:
+    import: optional:classpath:application-ai.yml
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:15432/eia_smartfix}
+    username: ${SPRING_DATASOURCE_USERNAME:eia_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:eia_password_change_me}
+  jpa:
+    show-sql: true
+
+app:
+  knowledge:
+    enabled: true
+    provider: ollama
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+      - http://localhost:3000
+      - http://127.0.0.1:3000
+      - http://localhost:3001
+      - http://127.0.0.1:3001
+      - http://localhost:80
+
+logging:
+  level:
+    com.ocp.eia: DEBUG
+    org.springframework.security: INFO

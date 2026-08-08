@@ -1,0 +1,32 @@
+# Java
+backend/target/
+backend/.mvn/
+*.class
+*.jar
+*.war
+*.log
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env & secrets
+.env
+*.env.local
+
+# Uploads
+data/documents/
+
+# Ollama
+ollama-data/

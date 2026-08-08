@@ -1,0 +1,39 @@
+spring:
+  ai:
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      init:
+        timeout: 2m
+        max-retries: 2
+      chat:
+        options:
+          model: ${SPRING_AI_OLLAMA_CHAT_MODEL:llama3.2}
+          temperature: 0.3
+          num-predict: 256
+          keep-alive: 10m
+      embedding:
+        options:
+          model: ${SPRING_AI_OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
+
+app:
+  knowledge:
+    enabled: true
+    provider: ollama
+  ai:
+    rag:
+      top-k: 3
+      embedding-dimension: 768
+      similarity-threshold: 0.65
+      hybrid-text-enabled: true
+      context:
+        equipment-boost: 2.0
+        family-boost: 1.5
+        zone-boost: 1.2
+      performance:
+        embedding-timeout: 5s
+        llm-timeout: 180s
+        circuit-breaker-threshold: 5
+        circuit-breaker-timeout: 30s
+        thread-pool-core-size: 2
+        thread-pool-max-size: 8
+        thread-pool-queue-capacity: 100

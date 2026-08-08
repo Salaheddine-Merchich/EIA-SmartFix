@@ -2,6 +2,7 @@ package com.ocp.eia.domain.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -71,6 +72,7 @@ public class Intervention {
     private String commentaireValidation;
 
     @OneToMany(mappedBy = "intervention", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 32)
     @Builder.Default
     private List<InterventionDocument> documents = new ArrayList<>();
 

@@ -32,8 +32,8 @@ public class GetEquipmentHistoryUseCase {
         if (!equipmentRepository.existsById(id)) {
             throw new ResourceNotFoundException("Équipement introuvable: " + id);
         }
-        List<Failure> failures = failureRepository.findByEquipmentIdOrderByDateHeureDesc(id);
-        List<Intervention> interventions = interventionRepository.findByFailureEquipmentIdOrderByCreatedAtDesc(id);
+        List<Failure> failures = failureRepository.findByEquipmentIdWithDetails(id);
+        List<Intervention> interventions = interventionRepository.findByFailureEquipmentIdWithDetails(id);
         return new EquipmentHistoryResponse(
                 failureMapper.toResponseList(failures),
                 interventionMapper.toResponseList(interventions)

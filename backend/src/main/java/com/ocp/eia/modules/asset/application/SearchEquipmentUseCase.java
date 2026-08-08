@@ -32,7 +32,7 @@ public class SearchEquipmentUseCase {
     }
 
     private EquipmentResponse toResponseWithFailureCount(Equipment equipment) {
-        long count = failureRepository.findByEquipmentIdOrderByDateHeureDesc(equipment.getId()).size();
+        long count = failureRepository.countByEquipmentId(equipment.getId());
         EquipmentResponse base = equipmentMapper.toResponse(equipment);
         return new EquipmentResponse(base.id(), base.code(), base.designation(), base.famille(),
                 base.zone(), base.constructeur(), base.miseEnService(), count);

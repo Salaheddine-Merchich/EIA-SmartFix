@@ -24,7 +24,7 @@ public class FindEquipmentByIdUseCase {
     public EquipmentResponse execute(UUID id) {
         Equipment equipment = equipmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Équipement introuvable: " + id));
-        long count = failureRepository.findByEquipmentIdOrderByDateHeureDesc(id).size();
+        long count = failureRepository.countByEquipmentId(id);
         EquipmentResponse base = equipmentMapper.toResponse(equipment);
         return new EquipmentResponse(base.id(), base.code(), base.designation(), base.famille(),
                 base.zone(), base.constructeur(), base.miseEnService(), count);

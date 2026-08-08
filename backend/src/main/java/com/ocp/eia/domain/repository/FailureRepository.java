@@ -57,5 +57,18 @@ public interface FailureRepository extends JpaRepository<Failure, UUID> {
 
     List<Failure> findByEquipmentIdOrderByDateHeureDesc(UUID equipmentId);
 
+    @Query("""
+            SELECT DISTINCT f FROM Failure f
+            JOIN FETCH f.equipment e
+            LEFT JOIN FETCH f.declarant
+            LEFT JOIN FETCH f.responsable
+            LEFT JOIN FETCH f.interventions
+            WHERE e.id = :equipmentId
+            ORDER BY f.dateHeure DESC
+            """)
+    List<Failure> findByEquipmentIdWithDetails(@Param("equipmentId") UUID equipmentId);
+
+    long countByEquipmentId(UUID equipmentId);
+
     long countByStatut(StatutPanne statut);
 }

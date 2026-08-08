@@ -42,6 +42,33 @@ public interface InterventionRepository extends JpaRepository<Intervention, UUID
 
     List<Intervention> findByFailureEquipmentIdOrderByCreatedAtDesc(UUID equipmentId);
 
+    @Query("""
+            SELECT DISTINCT i FROM Intervention i
+            JOIN FETCH i.failure f
+            JOIN FETCH f.equipment
+            LEFT JOIN FETCH f.declarant
+            LEFT JOIN FETCH f.responsable
+            LEFT JOIN FETCH i.technicien
+            LEFT JOIN FETCH i.validateur
+            LEFT JOIN FETCH i.documents
+            WHERE f.equipment.id = :equipmentId
+            ORDER BY i.createdAt DESC
+            """)
+    List<Intervention> findByFailureEquipmentIdWithDetails(@Param("equipmentId") UUID equipmentId);
+
+    @Query("""
+            SELECT DISTINCT i FROM Intervention i
+            JOIN FETCH i.failure f
+            JOIN FETCH f.equipment
+            LEFT JOIN FETCH f.declarant
+            LEFT JOIN FETCH f.responsable
+            LEFT JOIN FETCH i.technicien
+            LEFT JOIN FETCH i.validateur
+            LEFT JOIN FETCH i.documents
+            WHERE i.id IN :ids
+            """)
+    List<Intervention> findAllByIdWithDetails(@Param("ids") List<UUID> ids);
+
     long countByStatutValidation(StatutValidation statutValidation);
 
     java.util.List<Intervention> findByStatutValidation(StatutValidation statutValidation);
@@ -63,17 +90,7 @@ public interface InterventionRepository extends JpaRepository<Intervention, UUID
             AND (:faultCode IS NULL OR :faultCode = '' OR f.code_defaut ILIKE CONCAT('%', :faultCode, '%'))
             AND (
                 :textQuery IS NULL OR :textQuery = '' OR
-                to_tsvector('french',
-                    coalesce(i.symptomes, '') || ' ' ||
-                    coalesce(i.cause_racine, '') || ' ' ||
-                    coalesce(i.actions_correctives, '') || ' ' ||
-                    coalesce(i.analyse_technique, '') || ' ' ||
-                    coalesce(i.description, '') || ' ' ||
-                    coalesce(f.description_initiale, '') || ' ' ||
-                    coalesce(f.code_defaut, '') || ' ' ||
-                    coalesce(e.code, '') || ' ' ||
-                    coalesce(e.designation, '')
-                ) @@ plainto_tsquery('french', :textQuery)
+                i.search_vector @@ plainto_tsquery('french', :textQuery)
             )
             ORDER BY i.created_at DESC
             """, nativeQuery = true, countQuery = """
@@ -85,17 +102,7 @@ public interface InterventionRepository extends JpaRepository<Intervention, UUID
             AND (:faultCode IS NULL OR :faultCode = '' OR f.code_defaut ILIKE CONCAT('%', :faultCode, '%'))
             AND (
                 :textQuery IS NULL OR :textQuery = '' OR
-                to_tsvector('french',
-                    coalesce(i.symptomes, '') || ' ' ||
-                    coalesce(i.cause_racine, '') || ' ' ||
-                    coalesce(i.actions_correctives, '') || ' ' ||
-                    coalesce(i.analyse_technique, '') || ' ' ||
-                    coalesce(i.description, '') || ' ' ||
-                    coalesce(f.description_initiale, '') || ' ' ||
-                    coalesce(f.code_defaut, '') || ' ' ||
-                    coalesce(e.code, '') || ' ' ||
-                    coalesce(e.designation, '')
-                ) @@ plainto_tsquery('french', :textQuery)
+                i.search_vector @@ plainto_tsquery('french', :textQuery)
             )
             """)
     Page<Intervention> fullTextSearch(@Param("textQuery") String textQuery,

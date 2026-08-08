@@ -1,6 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
 import {
   EnterpriseBadge,
   EnterpriseButton,
@@ -18,13 +17,13 @@ import {
   useDisclosure,
   useEnterpriseConfirm,
 } from '@/design-system';
-import { failuresApi, interventionsApi } from '@/shared/api';
 import { useMutationFeedback } from '@/shared/hooks/useMutationFeedback';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import type { Failure, Intervention, StatutPanne } from '@/shared/types';
+import type { StatutPanne } from '@/shared/types';
 import { FailureSummaryPanel } from '../components/FailureSummaryPanel';
 import { InterventionTimeline } from '../components/InterventionTimeline';
 import { ValidationModal } from '../components/ValidationModal';
+import { useFailureDetail } from '../hooks/useFailureDetail';
 
 const INTERVENTION_FIELD_LABELS: Record<string, string> = {
   description: 'Description détaillée',
@@ -63,10 +62,21 @@ export default function FailureDetailPage() {
   const statutModal = useDisclosure();
   const validationModal = useDisclosure();
 
-  const [failure, setFailure] = useState<Failure | null>(null);
-  const [pageStatus, setPageStatus] = useState<'loading' | 'ready' | 'error' | 'notFound'>('loading');
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [interventions, setInterventions] = useState<Intervention[]>([]);
+  const {
+    failure,
+    interventions,
+    isLoading,
+    isError,
+    isNotFound,
+    loadError,
+    refetch,
+    updateFailure,
+    deleteFailure,
+    createIntervention,
+    submitIntervention,
+    validateIntervention,
+  } = useFailureDetail(id);
+
   const [statutEdit, setStatutEdit] = useState<StatutPanne>('OUVERTE');
   const [validationTarget, setValidationTarget] = useState<{ id: string; approved: boolean } | null>(null);
   const [form, setForm] = useState({
@@ -79,35 +89,6 @@ export default function FailureDetailPage() {
     tempsInterventionMinutes: '',
     description: '',
   });
-
-  const load = async () => {
-    if (!id) return;
-    setPageStatus('loading');
-    setLoadError(null);
-    try {
-      const [failureData, interventionsData] = await Promise.all([
-        failuresApi.get(id),
-        interventionsApi.list(id),
-      ]);
-      setFailure(failureData);
-      setInterventions(interventionsData.content);
-      setPageStatus('ready');
-    } catch (error) {
-      setFailure(null);
-      setInterventions([]);
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        setPageStatus('notFound');
-        setLoadError('Cette panne est introuvable ou a été supprimée.');
-      } else {
-        setPageStatus('error');
-        setLoadError('Impossible de charger les détails de la panne.');
-      }
-    }
-  };
-
-  useEffect(() => {
-    void load();
-  }, [id]);
 
   useEffect(() => {
     if (!failure || !id || searchParams.get('newIntervention') !== '1') return;
@@ -125,7 +106,7 @@ export default function FailureDetailPage() {
     if (!failure) return;
     const result = await execute(
       () =>
-        failuresApi.update(failure.id, {
+        updateFailure.mutateAsync({
           equipmentId: failure.equipmentId,
           dateHeure: failure.dateHeure,
           criticite: failure.criticite,
@@ -142,14 +123,13 @@ export default function FailureDetailPage() {
     );
     if (!result) return;
     statutModal.close();
-    void load();
   };
 
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault();
     const result = await execute(
       () =>
-        interventionsApi.create({
+        createIntervention.mutateAsync({
           failureId: id,
           ...form,
           dureeArretMinutes: form.dureeArretMinutes ? Number(form.dureeArretMinutes) : undefined,
@@ -164,7 +144,6 @@ export default function FailureDetailPage() {
     );
     if (!result) return;
     formModal.close();
-    void load();
   };
 
   const openValidationModal = (interventionId: string, approved: boolean) => {
@@ -175,7 +154,12 @@ export default function FailureDetailPage() {
   const handleConfirmValidation = async (commentaire: string) => {
     if (!validationTarget) return;
     const result = await execute(
-      () => interventionsApi.validate(validationTarget.id, validationTarget.approved, commentaire),
+      () =>
+        validateIntervention.mutateAsync({
+          interventionId: validationTarget.id,
+          approved: validationTarget.approved,
+          commentaire,
+        }),
       {
         successMessage: validationTarget.approved ? 'Intervention validée' : 'Intervention rejetée',
         errorMessage: 'Impossible de valider l\'intervention.',
@@ -184,16 +168,13 @@ export default function FailureDetailPage() {
     if (!result) return;
     validationModal.close();
     setValidationTarget(null);
-    void load();
   };
 
   const handleSubmitIntervention = async (interventionId: string) => {
-    const result = await execute(() => interventionsApi.submit(interventionId), {
+    await execute(() => submitIntervention.mutateAsync(interventionId), {
       successMessage: 'Intervention soumise',
       errorMessage: 'Impossible de soumettre l\'intervention.',
     });
-    if (!result) return;
-    void load();
   };
 
   const handleExportPdf = async (interventionId: string) => {
@@ -233,11 +214,11 @@ export default function FailureDetailPage() {
     }
   };
 
-  if (pageStatus === 'loading') {
+  if (isLoading) {
     return <EnterprisePageLoader message="Chargement de la panne…" />;
   }
 
-  if (pageStatus === 'notFound') {
+  if (isNotFound) {
     return (
       <EnterpriseErrorState
         title="Panne introuvable"
@@ -247,12 +228,12 @@ export default function FailureDetailPage() {
     );
   }
 
-  if (pageStatus === 'error' || !failure) {
+  if (isError || !failure) {
     return (
       <EnterpriseErrorState
         title="Erreur de chargement"
         message={loadError ?? 'Impossible de charger la panne.'}
-        onRetry={() => void load()}
+        onRetry={() => void refetch()}
       />
     );
   }
@@ -265,7 +246,7 @@ export default function FailureDetailPage() {
       variant: 'danger',
     });
     if (!ok) return;
-    const result = await execute(() => failuresApi.delete(failure.id), {
+    const result = await execute(() => deleteFailure.mutateAsync(), {
       successMessage: 'Panne supprimée',
       errorMessage: 'Impossible de supprimer la panne.',
     });

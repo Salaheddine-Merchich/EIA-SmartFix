@@ -1,29 +1,5 @@
 // Animation presets for enterprise-grade AI Assistant
 
-export const messageVariants = {
-  initial: { 
-    opacity: 0, 
-    y: 20,
-    scale: 0.98
-  },
-  animate: { 
-    opacity: 1, 
-    y: 0,
-    scale: 1,
-    transition: {
-      type: "spring" as const,
-      stiffness: 300,
-      damping: 24,
-      duration: 0.4
-    }
-  },
-  exit: { 
-    opacity: 0,
-    y: -10,
-    transition: { duration: 0.2 }
-  }
-};
-
 export const cardVariants = {
   initial: { 
     opacity: 0,
@@ -70,19 +46,6 @@ export const staggerContainer = {
   animate: {
     transition: {
       staggerChildren: 0.08
-    }
-  }
-};
-
-export const pulseVariants = {
-  initial: { scale: 1, opacity: 0.4 },
-  animate: { 
-    scale: [1, 1.1, 1],
-    opacity: [0.4, 0.8, 0.4],
-    transition: {
-      duration: 1.4,
-      repeat: Infinity,
-      ease: "easeInOut" as const
     }
   }
 };

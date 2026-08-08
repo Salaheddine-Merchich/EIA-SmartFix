@@ -1,124 +1,55 @@
-import { type FormEvent, useEffect, useState } from 'react';
-
+import { type FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-
 import {
-
   EnterpriseBadge,
-
   EnterpriseButton,
-
   EnterpriseCard,
-
   EnterpriseErrorState,
-
   EnterpriseInput,
-
   EnterpriseModal,
-
   EnterprisePageHeader,
-
   EnterpriseSearch,
-
   EnterpriseSelect,
-
   EnterpriseSkeletonTable,
-
   EnterpriseTable,
-
   EnterpriseTextarea,
-
   criticiteVariant,
-
   statutPanneVariant,
-
   useDisclosure,
-
 } from '@/design-system';
-
-import { equipmentApi, failuresApi, usersApi } from '@/shared/api';
-
 import { useAuth } from '@/features/auth/context/AuthContext';
-
+import { useEquipmentList } from '@/features/equipment/hooks/useEquipmentList';
+import { useAssignableUsers } from '@/features/users/hooks/useAssignableUsers';
 import { useMutationFeedback } from '@/shared/hooks/useMutationFeedback';
-
-import type { Criticite, Equipment, Failure, StatutPanne, User } from '@/shared/types';
+import type { Criticite, StatutPanne } from '@/shared/types';
+import { useFailuresList } from '../hooks/useFailuresList';
 import { formatInterventionLinkLabel } from '../utils/formatInterventionLinkLabel';
-
-
 
 export default function FailuresPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { loading, execute } = useMutationFeedback();
-
-  const [items, setItems] = useState<Failure[]>([]);
-  const [listStatus, setListStatus] = useState<'loading' | 'ready' | 'error'>('loading');
-
-  const [equipment, setEquipment] = useState<Equipment[]>([]);
-
-  const [responsables, setResponsables] = useState<User[]>([]);
-
   const [search, setSearch] = useState('');
-
   const formModal = useDisclosure();
 
-  const [form, setForm] = useState({
-
-    equipmentId: '',
-
-    dateHeure: new Date().toISOString().slice(0, 16),
-
-    criticite: 'MOYENNE' as Criticite,
-
-    zoneService: '',
-
-    responsableId: '',
-
-    descriptionInitiale: '',
-
-    codeDefaut: '',
-
-    statut: 'OUVERTE' as StatutPanne,
-
+  const { failures, isLoading, isError, refetch, createFailure } = useFailuresList({
+    search,
+    page: 0,
+    size: 50,
   });
+  const { equipment } = useEquipmentList({ page: 0, size: 100 });
+  const { data: responsables = [] } = useAssignableUsers();
 
-
-
-  const load = async () => {
-    setListStatus('loading');
-    try {
-      const r = await failuresApi.list({ search, page: 0, size: 50 });
-      setItems(r.content);
-      setListStatus('ready');
-    } catch {
-      setItems([]);
-      setListStatus('error');
-    }
-  };
-
-  useEffect(() => {
-    void load();
-
-    equipmentApi
-
-      .list({ page: 0, size: 100 })
-
-      .then((r) => setEquipment(r.content))
-
-      .catch(() => setEquipment([]));
-
-    usersApi
-
-      .assignable()
-
-      .then(setResponsables)
-
-      .catch(() => setResponsables([]));
-
-  }, [search]);
-
-
+  const [form, setForm] = useState({
+    equipmentId: '',
+    dateHeure: new Date().toISOString().slice(0, 16),
+    criticite: 'MOYENNE' as Criticite,
+    zoneService: '',
+    responsableId: '',
+    descriptionInitiale: '',
+    codeDefaut: '',
+    statut: 'OUVERTE' as StatutPanne,
+  });
 
   const openCreateModal = () => {
     const defaultResponsableId =
@@ -138,13 +69,11 @@ export default function FailuresPage() {
     formModal.open();
   };
 
-
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const created = await execute(
       () =>
-        failuresApi.create({
+        createFailure.mutateAsync({
           ...form,
           dateHeure: new Date(form.dateHeure).toISOString(),
           responsableId: form.responsableId || undefined,
@@ -160,166 +89,99 @@ export default function FailuresPage() {
     navigate(`/failures/${created.id}?newIntervention=1`);
   };
 
-
-
   return (
-
     <div className="space-y-6">
-
       <EnterprisePageHeader
-
         title="Pannes"
-
         description="Suivi et déclaration des incidents équipements"
-
         actions={
-
           <EnterpriseButton onClick={openCreateModal}>Déclarer une panne</EnterpriseButton>
-
         }
-
       />
-
-
 
       <EnterpriseSearch
-
         placeholder="Rechercher une panne…"
-
         value={search}
-
         onChange={(e) => setSearch(e.target.value)}
-
       />
 
-
-
       <EnterpriseCard padding="none">
-        {listStatus === 'loading' && <EnterpriseSkeletonTable rows={6} />}
-        {listStatus === 'error' && (
+        {isLoading && <EnterpriseSkeletonTable rows={6} />}
+        {isError && (
           <EnterpriseErrorState
             title="Erreur de chargement"
             message="Impossible de charger la liste des pannes."
-            onRetry={() => void load()}
+            onRetry={() => void refetch()}
           />
         )}
-        {listStatus === 'ready' && (
-        <EnterpriseTable
-
-          data={items}
-
-          keyExtractor={(f) => f.id}
-
-          emptyMessage="Aucune panne enregistrée"
-
-          columns={[
-
-            {
-
-              key: 'equipment',
-
-              header: 'Équipement',
-
-              render: (f) => (
-
-                <div>
-
-                  <div className="font-medium text-slate-900 dark:text-slate-100">{f.equipmentCode}</div>
-
-                  <div className="text-xs text-slate-500">{f.equipmentDesignation}</div>
-
-                </div>
-
-              ),
-
-            },
-
-            {
-
-              key: 'date',
-
-              header: 'Date',
-
-              render: (f) => new Date(f.dateHeure).toLocaleString('fr-FR'),
-
-            },
-
-            {
-
-              key: 'criticite',
-
-              header: 'Criticité',
-
-              render: (f) => <EnterpriseBadge label={f.criticite} variant={criticiteVariant(f.criticite)} />,
-
-            },
-
-            {
-
-              key: 'statut',
-
-              header: 'Statut',
-
-              render: (f) => <EnterpriseBadge label={f.statut} variant={statutPanneVariant(f.statut)} />,
-
-            },
-
-            {
-
-              key: 'zone',
-
-              header: 'Zone / service',
-
-              render: (f) => f.zoneService || '—',
-
-            },
-
-            {
-              key: 'declarant',
-              header: 'Déclaré par',
-              render: (f) => f.declarantNom || '—',
-            },
-            {
-              key: 'responsable',
-              header: 'Responsable EIA',
-              render: (f) => f.responsableNom || '—',
-            },
-
-            {
-
-              key: 'code',
-
-              header: 'Code défaut',
-
-              render: (f) => f.codeDefaut || '—',
-
-            },
-
-            {
-
-              key: 'actions',
-
-              header: 'Actions',
-
-              render: (f) => (
-                <Link
-                  to={`/failures/${f.id}`}
-                  title="Ouvrir le détail et gérer les interventions"
-                  className="text-sm font-medium text-emerald-600 hover:underline dark:text-emerald-400"
-                >
-                  {formatInterventionLinkLabel(f)}
-                </Link>
-              ),
-
-            },
-
-          ]}
-
-        />
+        {!isLoading && !isError && (
+          <EnterpriseTable
+            data={failures}
+            keyExtractor={(f) => f.id}
+            emptyMessage="Aucune panne enregistrée"
+            columns={[
+              {
+                key: 'equipment',
+                header: 'Équipement',
+                render: (f) => (
+                  <div>
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{f.equipmentCode}</div>
+                    <div className="text-xs text-slate-500">{f.equipmentDesignation}</div>
+                  </div>
+                ),
+              },
+              {
+                key: 'date',
+                header: 'Date',
+                render: (f) => new Date(f.dateHeure).toLocaleString('fr-FR'),
+              },
+              {
+                key: 'criticite',
+                header: 'Criticité',
+                render: (f) => <EnterpriseBadge label={f.criticite} variant={criticiteVariant(f.criticite)} />,
+              },
+              {
+                key: 'statut',
+                header: 'Statut',
+                render: (f) => <EnterpriseBadge label={f.statut} variant={statutPanneVariant(f.statut)} />,
+              },
+              {
+                key: 'zone',
+                header: 'Zone / service',
+                render: (f) => f.zoneService || '—',
+              },
+              {
+                key: 'declarant',
+                header: 'Déclaré par',
+                render: (f) => f.declarantNom || '—',
+              },
+              {
+                key: 'responsable',
+                header: 'Responsable EIA',
+                render: (f) => f.responsableNom || '—',
+              },
+              {
+                key: 'code',
+                header: 'Code défaut',
+                render: (f) => f.codeDefaut || '—',
+              },
+              {
+                key: 'actions',
+                header: 'Actions',
+                render: (f) => (
+                  <Link
+                    to={`/failures/${f.id}`}
+                    title="Ouvrir le détail et gérer les interventions"
+                    className="text-sm font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+                  >
+                    {formatInterventionLinkLabel(f)}
+                  </Link>
+                ),
+              },
+            ]}
+          />
         )}
       </EnterpriseCard>
-
-
 
       <EnterpriseModal
         open={formModal.isOpen}
@@ -399,10 +261,6 @@ export default function FailuresPage() {
           </div>
         </form>
       </EnterpriseModal>
-
     </div>
-
   );
-
 }
-

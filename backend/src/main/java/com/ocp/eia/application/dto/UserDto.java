@@ -15,6 +15,7 @@ public final class UserDto {
     public record UserRequest(
             @NotBlank(message = "L'email est obligatoire")
             @Email(message = "Format d'email invalide")
+            @Size(max = 255)
             String email,
             @NotBlank(message = "Le mot de passe est obligatoire")
             @Size(min = 8, max = 100, message = "Le mot de passe doit contenir entre 8 et 100 caractères")
@@ -22,6 +23,7 @@ public final class UserDto {
             @NotNull(message = "Le rôle est obligatoire")
             Role role,
             @NotBlank(message = "Le nom prénom est obligatoire")
+            @Size(max = 150)
             String nomPrenom,
             boolean actif
     ) {}
@@ -29,10 +31,12 @@ public final class UserDto {
     public record UserUpdateRequest(
             @NotBlank(message = "L'email est obligatoire")
             @Email(message = "Format d'email invalide")
+            @Size(max = 255)
             String email,
             @NotNull(message = "Le rôle est obligatoire")
             Role role,
             @NotBlank(message = "Le nom prénom est obligatoire")
+            @Size(max = 150)
             String nomPrenom,
             boolean actif,
             @Size(min = 8, max = 100, message = "Le mot de passe doit contenir entre 8 et 100 caractères")

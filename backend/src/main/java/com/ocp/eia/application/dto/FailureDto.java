@@ -4,6 +4,7 @@ import com.ocp.eia.domain.model.Criticite;
 import com.ocp.eia.domain.model.StatutPanne;
 import com.ocp.eia.domain.model.StatutValidation;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -16,11 +17,11 @@ public final class FailureDto {
             @NotNull UUID equipmentId,
             @NotNull Instant dateHeure,
             @NotNull Criticite criticite,
-            String zoneService,
+            @Size(max = 120) String zoneService,
             UUID responsableId,
             StatutPanne statut,
-            String descriptionInitiale,
-            String codeDefaut
+            @Size(max = 4000) String descriptionInitiale,
+            @Size(max = 64) String codeDefaut
     ) {}
 
     public record FailureResponse(

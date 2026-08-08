@@ -11,13 +11,13 @@ import { useAuth } from '@/features/auth/context/AuthContext';
 function mapLoginError(error: unknown): string {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
-      return 'Impossible de joindre le serveur. Ouvrez http://127.0.0.1:3000 et vérifiez que le backend tourne.';
+      return 'Impossible de joindre le serveur. Vérifiez que le backend est démarré.';
     }
     if (error.response.status === 401) {
       return 'Email ou mot de passe incorrect';
     }
     if (error.response.status === 403) {
-      return 'Accès refusé par le serveur. Rechargez la page (Ctrl+Shift+R) sur http://127.0.0.1:3000.';
+      return 'Accès refusé par le serveur.';
     }
     const body = error.response.data as { message?: string } | undefined;
     if (body?.message) {
@@ -30,8 +30,8 @@ function mapLoginError(error: unknown): string {
 
 export default function LoginPage() {
   const { login, isAuthenticated, isBootstrapping } = useAuth();
-  const [email, setEmail] = useState('technicien@ocp.ma');
-  const [password, setPassword] = useState('Password123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -75,6 +75,7 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            autoComplete="username"
           />
           <EnterpriseInput
             label="Mot de passe"
@@ -82,17 +83,13 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            autoComplete="current-password"
           />
           {error && <p className="text-sm text-red-600 dark:text-red-400" role="alert">{error}</p>}
           <EnterpriseButton type="submit" loading={loading} className="w-full">
             Se connecter
           </EnterpriseButton>
         </form>
-        <p className="mt-6 text-center text-xs text-slate-400">
-          Demo: technicien@ocp.ma / Password123!
-          <br />
-          URL: http://127.0.0.1:3000 (ou :3001 si 3000 occupé)
-        </p>
       </EnterpriseCard>
     </div>
   );

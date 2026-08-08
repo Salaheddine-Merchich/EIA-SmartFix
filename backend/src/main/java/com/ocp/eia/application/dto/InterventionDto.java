@@ -1,7 +1,10 @@
 package com.ocp.eia.application.dto;
 
 import com.ocp.eia.domain.model.StatutValidation;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
 import java.util.List;
@@ -13,30 +16,30 @@ public final class InterventionDto {
 
     public record InterventionRequest(
             @NotNull UUID failureId,
-            String description,
-            String symptomes,
-            String causeRacine,
-            String analyseTechnique,
-            String actionsCorrectives,
-            String piecesRemplacees,
-            Integer dureeArretMinutes,
-            Integer tempsInterventionMinutes
+            @Size(max = 4000) String description,
+            @Size(max = 4000) String symptomes,
+            @Size(max = 4000) String causeRacine,
+            @Size(max = 8000) String analyseTechnique,
+            @Size(max = 4000) String actionsCorrectives,
+            @Size(max = 2000) String piecesRemplacees,
+            @Min(0) @Max(525600) Integer dureeArretMinutes,
+            @Min(0) @Max(525600) Integer tempsInterventionMinutes
     ) {}
 
     public record InterventionUpdateRequest(
-            String description,
-            String symptomes,
-            String causeRacine,
-            String analyseTechnique,
-            String actionsCorrectives,
-            String piecesRemplacees,
-            Integer dureeArretMinutes,
-            Integer tempsInterventionMinutes
+            @Size(max = 4000) String description,
+            @Size(max = 4000) String symptomes,
+            @Size(max = 4000) String causeRacine,
+            @Size(max = 8000) String analyseTechnique,
+            @Size(max = 4000) String actionsCorrectives,
+            @Size(max = 2000) String piecesRemplacees,
+            @Min(0) @Max(525600) Integer dureeArretMinutes,
+            @Min(0) @Max(525600) Integer tempsInterventionMinutes
     ) {}
 
     public record ValidationRequest(
             @NotNull boolean approved,
-            String commentaire
+            @Size(max = 2000) String commentaire
     ) {}
 
     public record InterventionResponse(

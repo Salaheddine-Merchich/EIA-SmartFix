@@ -1,15 +1,11 @@
 -- Script d'enrichissement interventions pour le RAG EIA SmartFix
--- Crée 20 interventions VALIDEE avec champs RAG riches et formulations diversifiées
+-- Crée 18 interventions VALIDEE avec champs RAG riches (UUIDs valides)
 
--- Récupération IDs utilisateurs (besoins multiples techniciens)
--- mehdi@ocp.ma, mohamad@ocp.ma, ahmed@ocp.ma, technicien@ocp.ma 
--- responsable@ocp.ma (Karim Benali), kamal@ocp.ma comme validateurs
-
--- Interventions Instrumentation
+-- Interventions Instrumentation (5 interventions)
 INSERT INTO interventions (id, failure_id, technicien_id, description, symptomes, cause_racine, analyse_technique, actions_correctives, pieces_remplacees, duree_arret_minutes, temps_intervention_minutes, statut_validation, validateur_id, date_validation, commentaire_validation)
 VALUES
     -- PTI-056 Signal erratique
-    ('i1010101-1010-1010-1010-101010101010', 'f1010101-1010-1010-1010-101010101010', 
+    ('11010101-1010-1010-1010-101010101010', 'f1010101-1010-1010-1010-101010101010', 
      (SELECT id FROM users WHERE email = 'mehdi@ocp.ma'), 
      'Réparation capteur pression hydraulique PTI-056 signal instable',
      'Signal pression oscillant rapidement 0-250 bars, alarme process, impossible régulation circuit',
@@ -24,7 +20,7 @@ VALUES
     ),
 
     -- PTI-056 Dérive étalonnage  
-    ('i1010102-1010-1010-1010-101010101010', 'f1010102-1010-1010-1010-101010101010',
+    ('12010102-1010-1010-1010-101010101010', 'f1010102-1010-1010-1010-101010101010',
      (SELECT id FROM users WHERE email = 'mohamad@ocp.ma'),
      'Étalonnage capteur pression PTI-056 après dérive constatée',
      'Mesure décalée +15% vs manomètre étalon, pression réelle 200 bars affiché 230 bars',
@@ -35,14 +31,14 @@ VALUES
      30, 45, 'VALIDEE',
      (SELECT id FROM users WHERE email = 'kamal@ocp.ma'),
      '2026-07-20 17:30:00',
-     'Étalonnage conforme, certifica t métrologie émis'
+     'Étalonnage conforme, certificat métrologie émis'
     ),
 
     -- FIT-078 Aucun signal
-    ('i2020201-2020-2020-2020-202020202020', 'f2020201-2020-2020-2020-202020202020',
+    ('13020201-2020-2020-2020-202020202020', 'f2020201-2020-2020-2020-202020202020',
      (SELECT id FROM users WHERE email = 'ahmed@ocp.ma'),
      'Remplacement carte électronique débitmètre FIT-078',
-     'Affichage "---" sur écran local et superviseur, LED diagnostic rouge clignotante',
+     'Affichage --- sur écran local et superviseur, LED diagnostic rouge clignotante',
      'Carte électronique défaillante suite surtension lors orage, fusible grillé',
      'Contrôle alimentation : 0V au lieu 24VDC. Fusible F1 (2A) grillé. Test carte : aucun signal CPU.',
      'Remplacement carte électronique complète, reconfiguration paramètres process',
@@ -54,7 +50,7 @@ VALUES
     ),
 
     -- FIT-078 Mesure bloquée 0
-    ('i2020202-2020-2020-2020-202020202020', 'f2020202-2020-2020-2020-202020202020',
+    ('14020202-2020-2020-2020-202020202020', 'f2020202-2020-2020-2020-202020202020',
      (SELECT id FROM users WHERE email = 'technicien@ocp.ma'),
      'Nettoyage électrodes débitmètre électromagnétique FIT-078',
      'Débit affiché constant 0 m3/h, circulation visible dans conduite DN150, voyants OK',
@@ -69,7 +65,7 @@ VALUES
     ),
 
     -- AIT-134 Lecture instable pH  
-    ('i3030301-3030-3030-3030-303030303030', 'f3030301-3030-3030-3030-303030303030',
+    ('15030301-3030-3030-3030-303030303030', 'f3030301-3030-3030-3030-303030303030',
      (SELECT id FROM users WHERE email = 'mehdi@ocp.ma'),
      'Remplacement sonde pH analyseur AIT-134 instabilité mesure',
      'pH fluctuant 6.8 à 8.2 en continu, impossible régulation traitement, alarmes répétées',
@@ -83,11 +79,11 @@ VALUES
      'Sonde fonctionnelle, prévoir remplacement annuel'
     );
 
--- Interventions Automatisme
+-- Interventions Automatisme (5 interventions)
 INSERT INTO interventions (id, failure_id, technicien_id, description, symptomes, cause_racine, analyse_technique, actions_correctives, pieces_remplacees, duree_arret_minutes, temps_intervention_minutes, statut_validation, validateur_id, date_validation, commentaire_validation)  
 VALUES
     -- PLC-067 Perte communication Ethernet/IP
-    ('i4040401-4040-4040-4040-404040404040', 'f4040401-4040-4040-4040-404040404040',
+    ('16040401-4040-4040-4040-404040404040', 'f4040401-4040-4040-4040-404040404040',
      (SELECT id FROM users WHERE email = 'mohamad@ocp.ma'),
      'Réparation communication Ethernet/IP automate PLC-067',
      'Perte liaison superviseur, voyant NET rouge, timeout MSG instructions, arrêt ligne production',
@@ -102,7 +98,7 @@ VALUES
     ),
 
     -- PLC-067 Module E/S défaillant
-    ('i4040402-4040-4040-4040-404040404040', 'f4040402-4040-4040-4040-404040404040',
+    ('17040402-4040-4040-4040-404040404040', 'f4040402-4040-4040-4040-404040404040',
      (SELECT id FROM users WHERE email = 'ahmed@ocp.ma'),
      'Remplacement module analogique 1756-IF8 automate Allen-Bradley',
      'Voies ANA0 à ANA3 valeurs aberrantes, 4-20mA lu comme 22.5mA, étalonnage impossible',
@@ -117,7 +113,7 @@ VALUES
     ),
 
     -- DI-089 Timeout Modbus TCP
-    ('i5050501-5050-5050-5050-505050505050', 'f5050501-5050-5050-5050-505050505050',
+    ('18050501-5050-5050-5050-505050505050', 'f5050501-5050-5050-5050-505050505050',
      (SELECT id FROM users WHERE email = 'technicien@ocp.ma'),
      'Configuration réseau module Modbus TCP DI-089 timeouts',
      'Communication sporadique Modbus, timeout lecture registres 40001-40016, supervision partielle',  
@@ -129,16 +125,13 @@ VALUES
      (SELECT id FROM users WHERE email = 'kamal@ocp.ma'),
      '2026-07-19 18:20:00', 
      'Communication fluide, surveiller trafic réseau'
-    );
+    ),
 
--- Interventions suite dans le fichier...
-INSERT INTO interventions (id, failure_id, technicien_id, description, symptomes, cause_racine, analyse_technique, actions_correctives, pieces_remplacees, duree_arret_minutes, temps_intervention_minutes, statut_validation, validateur_id, date_validation, commentaire_validation)
-VALUES
     -- UPS-012 Batterie défaillante
-    ('i6060601-6060-6060-6060-606060606060', 'f6060601-6060-6060-6060-606060606060',
+    ('19060601-6060-6060-6060-606060606060', 'f6060601-6060-6060-6060-606060606060',
      (SELECT id FROM users WHERE email = 'mehdi@ocp.ma'),
      'Remplacement batterie onduleur UPS-012 perte autonomie',
-     'Alarme "BATTERY FAULT", autonomie chutée à 3 minutes au lieu 15 minutes nominales',
+     'Alarme BATTERY FAULT, autonomie chutée à 3 minutes au lieu 15 minutes nominales',
      'Vieillissement batteries plomb-gel, sulfatation plaques, capacité résiduelle <40%',
      'Test décharge contrôlée : 3.2min à 80% charge nominale. Tension cellule <10.5V. Age 4 ans.',
      'Remplacement jeu 20 batteries plomb-gel, test autonomie, calibrage onduleur',
@@ -150,7 +143,7 @@ VALUES
     ),
 
     -- UPS-012 Surtension réseau
-    ('i6060602-6060-6060-6060-606060606060', 'f6060602-6060-6060-6060-606060606060',
+    ('1a060602-6060-6060-6060-606060606060', 'f6060602-6060-6060-6060-606060606060',
      (SELECT id FROM users WHERE email = 'mohamad@ocp.ma'),
      'Réglage seuils protection onduleur UPS-012 surtensions',
      'Passage mode bypass fréquent, surtensions réseau 253V détectées, charge non protégée',
@@ -164,11 +157,11 @@ VALUES
      'Onduleur stable, moins de basculements bypass'
     );
 
--- Interventions Mécanique  
+-- Interventions Mécanique (4 interventions)
 INSERT INTO interventions (id, failure_id, technicien_id, description, symptomes, cause_racine, analyse_technique, actions_correctives, pieces_remplacees, duree_arret_minutes, temps_intervention_minutes, statut_validation, validateur_id, date_validation, commentaire_validation)
 VALUES
     -- RED-045 Vibrations réducteur
-    ('i7070701-7070-7070-7070-707070707070', 'f7070701-7070-7070-7070-707070707070',
+    ('1b070701-7070-7070-7070-707070707070', 'f7070701-7070-7070-7070-707070707070',
      (SELECT id FROM users WHERE email = 'ahmed@ocp.ma'),
      'Réparation réducteur RED-045 vibrations et surchauffe',
      'Vibrations fortes >15mm/s RMS, bruit métallique, huile chaude +85°C, paliers usés',
@@ -183,7 +176,7 @@ VALUES
     ),
 
     -- RED-045 Fuite huile  
-    ('i7070702-7070-7070-7070-707070707070', 'f7070702-7070-7070-7070-707070707070',
+    ('1c070702-7070-7070-7070-707070707070', 'f7070702-7070-7070-7070-707070707070',
      (SELECT id FROM users WHERE email = 'technicien@ocp.ma'),
      'Réparation fuite huile réducteur RED-045 niveau critique',
      'Fuite importante huile carter, niveau bas critique, témoin rouge allumé',
@@ -198,11 +191,11 @@ VALUES
     ),
 
     -- VEN-123 Débit insuffisant
-    ('i8080801-8080-8080-8080-808080808080', 'f8080801-8080-8080-8080-808080808080',
+    ('1d080801-8080-8080-8080-808080808080', 'f8080801-8080-8080-8080-808080808080',
      (SELECT id FROM users WHERE email = 'mehdi@ocp.ma'),
      'Nettoyage ventilateur VEN-123 performance dégradée',
      'Débit mesuré 18 m³/min au lieu 30 m³/min nominal, dépression insuffisante atelier',
-     'Encrassement pales et volute par poussières, filtre d\'admission colmaté',
+     'Encrassement pales et volute par poussières, filtre admission colmaté',
      'Epaisseur dépôt 5mm sur pales. Filtre G4 saturé >250 Pa. Vitesse rotation normale 1450 rpm.',
      'Démontage volute, nettoyage haute pression pales et diffuseur, remplacement filtre',
      'Filtre à air G4 490x592x48mm classe ISO ePM10 65%',
@@ -213,7 +206,7 @@ VALUES
     ),
 
     -- VEN-123 Courroie détendue
-    ('i8080802-8080-8080-8080-808080808080', 'f8080802-8080-8080-8080-808080808080',
+    ('1e080802-8080-8080-8080-808080808080', 'f8080802-8080-8080-8080-808080808080',
      (SELECT id FROM users WHERE email = 'mohamad@ocp.ma'),
      'Réglage tension courroie ventilateur VEN-123 glissement',
      'Courroie glisse sous charge, vitesse chute à 1200 rpm, bruit sifflement aigu',
@@ -227,11 +220,11 @@ VALUES
      'Courroie bien tendue, prévoir remplacement poulie usée'
     );
 
--- Interventions Électricité
+-- Interventions Électricité (4 interventions)
 INSERT INTO interventions (id, failure_id, technicien_id, description, symptomes, cause_racine, analyse_technique, actions_correctives, pieces_remplacees, duree_arret_minutes, temps_intervention_minutes, statut_validation, validateur_id, date_validation, commentaire_validation)
 VALUES  
     -- CTR-234 Contacteur ne ferme pas
-    ('i9090901-9090-9090-9090-909090909090', 'f9090901-9090-9090-9090-909090909090',
+    ('1f090901-9090-9090-9090-909090909090', 'f9090901-9090-9090-9090-909090909090',
      (SELECT id FROM users WHERE email = 'ahmed@ocp.ma'),
      'Remplacement contacteur CTR-234 défaillant pompe haute pression', 
      'Contacteur ne ferme plus, voyant défaut allumé, moteur pompe 75kW ne démarre pas',
@@ -246,7 +239,7 @@ VALUES
     ),
 
     -- CTR-234 Contacts grillés  
-    ('i9090902-9090-9090-9090-909090909090', 'f9090902-9090-9090-9090-909090909090',
+    ('20090902-9090-9090-9090-909090909090', 'f9090902-9090-9090-9090-909090909090',
      (SELECT id FROM users WHERE email = 'technicien@ocp.ma'),
      'Remplacement jeu contacts contacteur CTR-234 arc électrique',
      'Arc électrique lors fermeture/ouverture, contacts noircis, résistance élevée',  
@@ -261,7 +254,7 @@ VALUES
     ),
 
     -- TRF-567 Surchauffe transformateur
-    ('ia0a0a01-a0a0-a0a0-a0a0-a0a0a0a0a0a0', 'fa0a0a01-a0a0-a0a0-a0a0-a0a0a0a0a0a0', 
+    ('210a0a01-a0a0-a0a0-a0a0-a0a0a0a0a0a0', 'fa0a0a01-a0a0-a0a0-a0a0-a0a0a0a0a0a0', 
      (SELECT id FROM users WHERE email = 'mehdi@ocp.ma'),
      'Maintenance transformateur TRF-567 surchauffe enroulements',
      'Température enroulements +95°C, seuil alarme 85°C, ventilation forcée saturée poussière',
@@ -276,7 +269,7 @@ VALUES
     ),
 
     -- TRF-567 Harmoniques
-    ('ia0a0a02-a0a0-a0a0-a0a0-a0a0a0a0a0a0', 'fa0a0a02-a0a0-a0a0-a0a0-a0a0a0a0a0a0',
+    ('220a0a02-a0a0-a0a0-a0a0-a0a0a0a0a0a0', 'fa0a0a02-a0a0-a0a0-a0a0-a0a0a0a0a0a0',
      (SELECT id FROM users WHERE email = 'mohamad@ocp.ma'), 
      'Installation filtre harmoniques transformateur TRF-567 déformation onde',
      'THD tension >8%, déformation onde sinusoïdale, échauffement anormal neutre',

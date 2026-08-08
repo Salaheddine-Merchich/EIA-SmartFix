@@ -38,10 +38,10 @@ Vérifié par `ArchitectureTest` (ArchUnit).
 | `LlmProviderPort` | `OllamaLlmAdapter` | OpenAI, Gemini |
 | `VectorStorePort` | `PgVectorStoreAdapter` | — |
 
-Activation : `app.knowledge.enabled=true` (profil `ai`).  
+Activation : `app.knowledge.enabled=true` (profil `dev` et/ou config `ai`).  
 Provider : `app.knowledge.provider=ollama|openai|gemini` (défaut `ollama`).
 
-En dev avec profil `ai`, les interventions `VALIDEE` existantes sont réindexées au démarrage (`KnowledgeDevReindexConfiguration`).
+En profil `dev` avec knowledge activé, les interventions `VALIDEE` existantes sont réindexées au démarrage (`KnowledgeDevReindexConfiguration`).
 
 ## Workflow intervention
 
@@ -57,13 +57,39 @@ Rejet ou suppression → `InterventionKnowledgeRemovedEvent` → désindexation 
 
 Contenu indexé : symptômes, cause racine, analyse, actions correctives, pièces, description (pas les fichiers documents).
 
+## Ports & commandes (rappel)
+
+| Service | Port / URL |
+|---------|------------|
+| Frontend Vite (local) | http://localhost:3000 |
+| Frontend Docker | http://localhost:80 |
+| Backend | http://localhost:8080 |
+| PostgreSQL (hôte) | `localhost:15432` |
+| Ollama | http://localhost:11434 |
+
+```bash
+# Local
+docker compose up -d postgres
+cd backend && mvn spring-boot:run -Dspring-boot.run.profiles=dev
+cd frontend && npm run dev
+
+# Docker
+docker compose up -d postgres backend frontend
+docker compose --profile ai up -d ollama
+```
+
+Détail frontend : [FRONTEND.md](FRONTEND.md). Démarrage complet : [README.md](../README.md).
+
 ## Frontend
+
+Structure et conventions : [FRONTEND.md](FRONTEND.md).
 
 ```
 src/
-├── app/           # Routes, bootstrap
-├── features/      # Un dossier par domaine métier
-├── shared/        # API, composants, types
+├── app/             # Routes, bootstrap
+├── features/        # Un dossier par domaine métier
+├── shared/          # API, composants, types
+├── design-system/   # Tokens + composants Enterprise*
 └── layouts/
 ```
 

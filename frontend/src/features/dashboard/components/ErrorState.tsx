@@ -1,1 +1,1 @@
-export { EnterpriseErrorState as ErrorState } from '@/design-system';
+export { ErrorState } from '@/shared/components/ErrorState';

@@ -1,17 +1,17 @@
 import type { LiveEventCategory, LiveEventType } from '../types';
 
 const TYPE_ICONS: Partial<Record<LiveEventType, string>> = {
-  INTERVENTION_VALIDATED: '✓',
-  CRITICAL_ALERT: '⚠',
-  FAILURE_CREATED: '⚠',
-  RAG_REINDEXED: '🤖',
-  INTERVENTION_CREATED: '👷',
-  INTERVENTION_SUBMITTED: '👷',
-  AI_UNAVAILABLE: '⚡',
+  INTERVENTION_VALIDATED: 'OK',
+  CRITICAL_ALERT: 'ALRT',
+  FAILURE_CREATED: 'PANNE',
+  RAG_REINDEXED: 'RAG',
+  INTERVENTION_CREATED: 'INT',
+  INTERVENTION_SUBMITTED: 'INT',
+  AI_UNAVAILABLE: 'IA',
 };
 
 export function liveEventIcon(type: LiveEventType): string {
-  return TYPE_ICONS[type] ?? '•';
+  return TYPE_ICONS[type] ?? 'EVT';
 }
 
 export const CATEGORY_LABELS: Record<LiveEventCategory, string> = {

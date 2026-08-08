@@ -1,13 +1,13 @@
 import { memo } from 'react';
 import type { ConversationMessage } from '../types';
-import { PremiumUserMessageBubble, PremiumAssistantMessageBubble } from './PremiumMessageBubble';
+import { UserMessageBubble, AssistantMessageBubble } from './MessageBubble';
 import { CopilotDotsOnly } from './CopilotLoader';
 import { useConversationAutoScroll } from '../hooks/useConversationAutoScroll';
 import { ASSISTANT_LAYOUT, EXAMPLE_QUERIES } from '../constants/layout';
 
 import type { AiDiagnosticTrace } from '@/shared/types';
 
-interface PremiumConversationThreadProps {
+interface ConversationThreadProps {
   messages: ConversationMessage[];
   loading: boolean;
   loadingMessage?: string;
@@ -15,13 +15,13 @@ interface PremiumConversationThreadProps {
   onExampleSelect?: (text: string) => void;
 }
 
-function PremiumConversationThreadComponent({
+function ConversationThreadComponent({
   messages,
   loading,
   loadingMessage = 'Génération…',
   onViewAnalysis,
   onExampleSelect,
-}: PremiumConversationThreadProps) {
+}: ConversationThreadProps) {
   const { containerRef, sentinelRef } = useConversationAutoScroll({
     messageCount: messages.length,
     loading,
@@ -47,12 +47,11 @@ function PremiumConversationThreadComponent({
                 onClick={() => onExampleSelect?.(example.text)}
                 className="w-full rounded-lg border border-slate-200 bg-white p-3.5 text-left transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:bg-slate-800"
               >
-                <div className="flex items-start gap-3">
-                  <span aria-hidden="true">{example.icon}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{example.text}</p>
-                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{example.category}</p>
-                  </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    {example.category}
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-slate-800 dark:text-slate-200">{example.text}</p>
                 </div>
               </button>
             ))}
@@ -74,9 +73,9 @@ function PremiumConversationThreadComponent({
         {messages.map((message) => (
           <div key={message.id}>
             {message.role === 'user' ? (
-              <PremiumUserMessageBubble message={message} />
+              <UserMessageBubble message={message} />
             ) : (
-              <PremiumAssistantMessageBubble
+              <AssistantMessageBubble
                 message={message}
                 onViewAnalysis={
                   message.response?.diagnosticTrace && onViewAnalysis
@@ -105,4 +104,4 @@ function PremiumConversationThreadComponent({
   );
 }
 
-export const PremiumConversationThread = memo(PremiumConversationThreadComponent);
+export const ConversationThread = memo(ConversationThreadComponent);

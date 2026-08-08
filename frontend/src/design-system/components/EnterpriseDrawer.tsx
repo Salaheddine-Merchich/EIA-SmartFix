@@ -43,7 +43,9 @@ export function EnterpriseDrawer({ open, onClose, title, children, side = 'right
             <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
               <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
               <EnterpriseButton variant="ghost" size="sm" onClick={onClose} aria-label="Fermer le panneau">
-                ✕
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </EnterpriseButton>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-5 pb-6">{children}</div>

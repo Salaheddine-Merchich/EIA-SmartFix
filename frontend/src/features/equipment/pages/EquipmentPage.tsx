@@ -4,9 +4,11 @@ import {
   EnterpriseBadge,
   EnterpriseButton,
   EnterpriseCard,
-  EnterpriseInput,
-  EnterpriseModal,
+  EnterpriseEmptyState,
   EnterpriseErrorState,
+  EnterpriseInput,
+  EnterpriseLoader,
+  EnterpriseModal,
   EnterprisePageHeader,
   EnterpriseSearch,
   EnterpriseSectionTitle,
@@ -121,6 +123,7 @@ export default function EquipmentPage() {
           <EnterpriseTable
             data={items}
             keyExtractor={(e) => e.id}
+            emptyMessage="Aucun équipement enregistré"
             columns={[
               { key: 'code', header: 'Code', render: (e) => <span className="font-medium">{e.code}</span> },
               { key: 'designation', header: 'Désignation', render: (e) => e.designation },
@@ -212,10 +215,16 @@ export default function EquipmentPage() {
         }
       >
         {historyQuery.isLoading && (
-          <p className="text-sm text-slate-500">Chargement de l&apos;historique…</p>
+          <div className="flex justify-center py-8">
+            <EnterpriseLoader label="Chargement de l'historique" />
+          </div>
         )}
         {historyQuery.isError && (
-          <p className="text-sm text-red-600">Impossible de charger l&apos;historique.</p>
+          <EnterpriseErrorState
+            title="Erreur de chargement"
+            message="Impossible de charger l'historique."
+            onRetry={() => void historyQuery.refetch()}
+          />
         )}
         {history && (
           <div className="max-h-[65vh] space-y-6 overflow-y-auto">
@@ -226,7 +235,10 @@ export default function EquipmentPage() {
             <div>
               <EnterpriseSectionTitle title="Pannes" />
               {history.failures.length === 0 ? (
-                <p className="text-sm text-slate-500">Aucune panne enregistrée.</p>
+                <EnterpriseEmptyState
+                  title="Aucune panne"
+                  description="Aucune panne enregistrée pour cet équipement."
+                />
               ) : (
                 <ul className="mt-3 space-y-2">
                   {history.failures.map((failure: Failure) => (
@@ -258,7 +270,10 @@ export default function EquipmentPage() {
             <div>
               <EnterpriseSectionTitle title="Interventions" />
               {history.interventions.length === 0 ? (
-                <p className="text-sm text-slate-500">Aucune intervention enregistrée.</p>
+                <EnterpriseEmptyState
+                  title="Aucune intervention"
+                  description="Aucune intervention enregistrée pour cet équipement."
+                />
               ) : (
                 <ul className="mt-3 space-y-2">
                   {history.interventions.map((intervention: Intervention) => (

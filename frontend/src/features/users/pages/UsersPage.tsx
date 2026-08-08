@@ -139,6 +139,7 @@ export default function UsersPage() {
           <EnterpriseTable
             data={users}
             keyExtractor={(u) => u.id}
+            emptyMessage="Aucun utilisateur enregistré"
             columns={[
               { key: 'name', header: 'Nom', render: (u) => u.nomPrenom },
               { key: 'email', header: 'Email', render: (u) => u.email },

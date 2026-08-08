@@ -5,7 +5,7 @@ import { RecurringDefectsPanel } from '../components/RecurringDefectsPanel';
 import { AlertsPanel } from '../components/AlertsPanel';
 import { CriticalEquipmentPanel } from '../components/CriticalEquipmentPanel';
 import { DashboardHeader } from '../components/DashboardHeader';
-import { ErrorState } from '../components/ErrorState';
+import { ErrorState } from '@/shared/components/ErrorState';
 import { KpiGrid } from '../components/KpiGrid';
 import { KpiSkeletonGrid, PanelSkeleton } from '../components/SkeletonBlock';
 import { QuickActionsGrid } from '../components/QuickActionsGrid';

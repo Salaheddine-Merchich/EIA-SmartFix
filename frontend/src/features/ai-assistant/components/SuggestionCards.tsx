@@ -1,14 +1,15 @@
 import { useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { EnterpriseEmptyState, EnterpriseLoader } from '@/design-system';
 import { interventionsApi } from '@/shared/api';
 import type { SimilarInterventionItem } from '../types';
 
-interface ProfessionalCardsProps {
+interface SuggestionCardsProps {
   items: SimilarInterventionItem[];
   loading: boolean;
 }
 
-function ProfessionalCardsComponent({ items, loading }: ProfessionalCardsProps) {
+function SuggestionCardsComponent({ items, loading }: SuggestionCardsProps) {
   const navigate = useNavigate();
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [openError, setOpenError] = useState('');
@@ -38,17 +39,20 @@ function ProfessionalCardsComponent({ items, loading }: ProfessionalCardsProps) 
 
       <div className="flex-1 overflow-y-auto px-4 py-3">
         {loading && items.length === 0 && (
-          <p className="py-8 text-center text-sm text-slate-500">Recherche en cours…</p>
+          <div className="flex justify-center py-8">
+            <EnterpriseLoader label="Recherche en cours" />
+          </div>
         )}
 
         {!loading && items.length === 0 && (
-          <p className="py-8 text-center text-sm text-slate-500">
-            Envoyez une description pour voir les interventions similaires.
-          </p>
+          <EnterpriseEmptyState
+            title="Aucune suggestion"
+            description="Envoyez une description pour voir les interventions similaires."
+          />
         )}
 
         {openError && (
-          <p className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700" role="alert">
+          <p className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300" role="alert">
             {openError}
           </p>
         )}
@@ -74,7 +78,11 @@ function ProfessionalCardsComponent({ items, loading }: ProfessionalCardsProps) 
                   </span>
                 </div>
                 <p className="line-clamp-3 text-xs leading-relaxed text-slate-600 dark:text-slate-400">{title}</p>
-                {busy && <p className="mt-2 text-xs text-slate-500">Ouverture…</p>}
+                {busy && (
+                  <div className="mt-2">
+                    <EnterpriseLoader label="Ouverture" />
+                  </div>
+                )}
               </button>
             );
           })}
@@ -84,4 +92,4 @@ function ProfessionalCardsComponent({ items, loading }: ProfessionalCardsProps) 
   );
 }
 
-export const ProfessionalCards = memo(ProfessionalCardsComponent);
+export const SuggestionCards = memo(SuggestionCardsComponent);

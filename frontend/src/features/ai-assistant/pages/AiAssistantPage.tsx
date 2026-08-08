@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { EnterpriseDrawer } from '@/design-system';
-import { PremiumHeader } from '../components/PremiumHeader';
-import { EnhancedComposer } from '../components/EnhancedComposer';
-import { PremiumConversationThread } from '../components/PremiumConversationThread';
-import { ProfessionalCards } from '../components/ProfessionalCards';
+import { AiAssistantHeader } from '../components/AiAssistantHeader';
+import { AiComposer } from '../components/AiComposer';
+import { ConversationThread } from '../components/ConversationThread';
+import { SuggestionCards } from '../components/SuggestionCards';
 import { ConversationStateBanner } from '../components/ConversationStateBanner';
 import { AiDiagnosticTracePanel } from '../explainability';
 import { useAiConversation } from '../hooks/useAiConversation';
@@ -11,7 +11,7 @@ import { useGenerationNavigationGuard } from '../hooks/useGenerationNavigationGu
 import { ASSISTANT_LAYOUT } from '../constants/layout';
 import type { AiDiagnosticTrace } from '@/shared/types';
 
-export default function PremiumAiAssistantPage() {
+export default function AiAssistantPage() {
   const {
     messages,
     loading,
@@ -39,7 +39,7 @@ export default function PremiumAiAssistantPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-white dark:bg-slate-950">
-      <PremiumHeader
+      <AiAssistantHeader
         status={status}
         onNewConversation={clearConversation}
         hasMessages={messages.length > 0}
@@ -48,7 +48,7 @@ export default function PremiumAiAssistantPage() {
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
         <section className="flex min-h-0 flex-1 flex-col lg:min-w-0">
           <div className="min-h-0 flex-1">
-            <PremiumConversationThread
+            <ConversationThread
               messages={messages}
               loading={loading}
               loadingMessage={loadingMessage}
@@ -66,11 +66,11 @@ export default function PremiumAiAssistantPage() {
             />
           </div>
 
-          <EnhancedComposer loading={loading} onSend={sendMessage} onStop={cancelGeneration} />
+          <AiComposer loading={loading} onSend={sendMessage} onStop={cancelGeneration} />
         </section>
 
         <div className={`min-h-[240px] w-full ${ASSISTANT_LAYOUT.sidePanelWidth} shrink-0`}>
-          <ProfessionalCards items={similarInterventions} loading={loading} />
+          <SuggestionCards items={similarInterventions} loading={loading} />
         </div>
       </div>
 

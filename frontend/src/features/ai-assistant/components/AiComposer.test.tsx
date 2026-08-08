@@ -1,13 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { EnhancedComposer } from './EnhancedComposer';
+import { AiComposer } from './AiComposer';
 
-describe('EnhancedComposer', () => {
+describe('AiComposer', () => {
   it('sends on button click', async () => {
     const user = userEvent.setup();
     const onSend = vi.fn();
-    render(<EnhancedComposer loading={false} onSend={onSend} onStop={vi.fn()} />);
+    render(<AiComposer loading={false} onSend={onSend} onStop={vi.fn()} />);
 
     await user.type(screen.getByLabelText('Décrivez votre panne'), 'Panne E001');
     await user.click(screen.getByRole('button', { name: 'Envoyer le message' }));
@@ -17,7 +17,7 @@ describe('EnhancedComposer', () => {
 
   it('shows stop button while loading', () => {
     const onStop = vi.fn();
-    render(<EnhancedComposer loading onSend={vi.fn()} onStop={onStop} />);
+    render(<AiComposer loading onSend={vi.fn()} onStop={onStop} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Arrêter la génération' }));
     expect(onStop).toHaveBeenCalled();
@@ -25,7 +25,7 @@ describe('EnhancedComposer', () => {
 
   it('does not send on Enter while loading', () => {
     const onSend = vi.fn();
-    render(<EnhancedComposer loading onSend={onSend} onStop={vi.fn()} />);
+    render(<AiComposer loading onSend={onSend} onStop={vi.fn()} />);
     const input = screen.getByLabelText('Décrivez votre panne');
 
     fireEvent.change(input, { target: { value: 'Test' } });

@@ -3,7 +3,7 @@ import { isCriticalLiveEvent, liveEventIcon } from './eventPresentation';
 
 describe('eventPresentation', () => {
   it('maps intervention validated icon', () => {
-    expect(liveEventIcon('INTERVENTION_VALIDATED')).toBe('✓');
+    expect(liveEventIcon('INTERVENTION_VALIDATED')).toBe('OK');
   });
 
   it('detects critical events', () => {

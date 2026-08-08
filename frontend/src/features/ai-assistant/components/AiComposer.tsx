@@ -2,13 +2,13 @@ import { type KeyboardEvent, useState, useRef, useEffect, memo } from 'react';
 import { EnterpriseButton } from '@/design-system';
 import { ASSISTANT_LAYOUT } from '../constants/layout';
 
-interface EnhancedComposerProps {
+interface AiComposerProps {
   loading: boolean;
   onSend: (value: string) => void;
   onStop: () => void;
 }
 
-function EnhancedComposerComponent({ loading, onSend, onStop }: EnhancedComposerProps) {
+function AiComposerComponent({ loading, onSend, onStop }: AiComposerProps) {
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -103,4 +103,4 @@ function EnhancedComposerComponent({ loading, onSend, onStop }: EnhancedComposer
   );
 }
 
-export const EnhancedComposer = memo(EnhancedComposerComponent);
+export const AiComposer = memo(AiComposerComponent);

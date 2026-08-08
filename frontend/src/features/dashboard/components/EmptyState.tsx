@@ -1,1 +1,1 @@
-export { EnterpriseEmptyState as EmptyState } from '@/design-system';
+export { EmptyState } from '@/shared/components/EmptyState';

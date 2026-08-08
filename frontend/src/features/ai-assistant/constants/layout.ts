@@ -1,4 +1,4 @@
-/** Shared layout tokens for the AI assistant premium UI. */
+/** Shared layout tokens for the AI assistant UI. */
 export const ASSISTANT_LAYOUT = {
   threadMaxWidth: 'max-w-3xl',
   pagePaddingX: 'px-4 sm:px-6',
@@ -10,17 +10,14 @@ export const ASSISTANT_LAYOUT = {
 
 export const EXAMPLE_QUERIES = [
   {
-    icon: '⚡',
     text: 'Code défaut E001 sur variateur ABB ACS880 au démarrage',
     category: 'Code défaut',
   },
   {
-    icon: '🔥',
     text: 'Surchauffe moteur convoyeur, température carter > 85°C',
     category: 'Symptôme',
   },
   {
-    icon: '📡',
     text: 'Capteur niveau silo 3 affiche 100% malgré vidange',
     category: 'Instrumentation',
   },

@@ -34,7 +34,10 @@ import { EmptyState } from '../components/EmptyState';
 
 
 
-const palette = ['#059669', '#0d9488', '#0891b2', '#0284c7', '#6366f1', '#64748b'];
+const brand = 'var(--color-brand)';
+const muted = 'var(--ds-text-muted)';
+const border = 'var(--ds-border)';
+const palette = [brand, '#0d9488', '#0891b2', '#0284c7', '#6366f1', muted];
 
 
 
@@ -156,11 +159,11 @@ export function AnalyticsSection({ stats }: AnalyticsSectionProps) {
 
               <BarChart data={familleData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
 
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={border} vertical={false} />
 
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: muted }} />
 
-                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} allowDecimals={false} />
+                <YAxis tick={{ fontSize: 11, fill: muted }} allowDecimals={false} />
 
                 <Tooltip content={<ChartTooltip />} />
 
@@ -206,15 +209,15 @@ export function AnalyticsSection({ stats }: AnalyticsSectionProps) {
 
               <BarChart data={causesData} layout="vertical" margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
 
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={border} horizontal={false} />
 
-                <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} allowDecimals={false} />
+                <XAxis type="number" tick={{ fontSize: 11, fill: muted }} allowDecimals={false} />
 
-                <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11, fill: '#64748b' }} />
+                <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11, fill: muted }} />
 
                 <Tooltip content={<ChartTooltip label={undefined} />} />
 
-                <Bar dataKey="value" fill="#059669" radius={[0, 6, 6, 0]} />
+                <Bar dataKey="value" fill={brand} radius={[0, 6, 6, 0]} />
 
               </BarChart>
 
@@ -330,15 +333,15 @@ export function AnalyticsSection({ stats }: AnalyticsSectionProps) {
 
               <LineChart data={monthlyData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
 
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={border} vertical={false} />
 
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: muted }} />
 
-                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} allowDecimals={false} />
+                <YAxis tick={{ fontSize: 11, fill: muted }} allowDecimals={false} />
 
                 <Tooltip content={<ChartTooltip />} />
 
-                <Line type="monotone" dataKey="value" stroke="#059669" strokeWidth={2} dot={{ r: 4 }} />
+                <Line type="monotone" dataKey="value" stroke={brand} strokeWidth={2} dot={{ r: 4 }} />
 
               </LineChart>
 

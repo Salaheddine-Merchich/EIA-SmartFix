@@ -111,7 +111,9 @@ export function EnterpriseModal({
                 {title}
               </h2>
               <EnterpriseButton variant="ghost" size="sm" onClick={onClose} aria-label="Fermer">
-                ✕
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </EnterpriseButton>
             </div>
             <div className="px-5 py-4">{children}</div>

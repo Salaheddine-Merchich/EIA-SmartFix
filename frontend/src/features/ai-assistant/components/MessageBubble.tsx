@@ -6,7 +6,7 @@ interface UserMessageBubbleProps {
   message: UserMessage;
 }
 
-function PremiumUserMessageBubbleComponent({ message }: UserMessageBubbleProps) {
+function UserMessageBubbleComponent({ message }: UserMessageBubbleProps) {
   return (
     <div className="flex justify-end">
       <div className="max-w-[85%] rounded-2xl rounded-br-md bg-slate-800 px-4 py-3 text-sm leading-relaxed text-white sm:max-w-[75%]">
@@ -26,7 +26,7 @@ interface AssistantMessageBubbleProps {
   onViewAnalysis?: () => void;
 }
 
-function PremiumAssistantMessageBubbleComponent({
+function AssistantMessageBubbleComponent({
   message,
   onViewAnalysis,
 }: AssistantMessageBubbleProps) {
@@ -157,5 +157,5 @@ function PremiumAssistantMessageBubbleComponent({
   );
 }
 
-export const PremiumUserMessageBubble = memo(PremiumUserMessageBubbleComponent);
-export const PremiumAssistantMessageBubble = memo(PremiumAssistantMessageBubbleComponent);
+export const UserMessageBubble = memo(UserMessageBubbleComponent);
+export const AssistantMessageBubble = memo(AssistantMessageBubbleComponent);

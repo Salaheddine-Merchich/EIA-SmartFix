@@ -15,7 +15,7 @@ export function SourceEvidenceCard({ document, index }: SourceEvidenceCardProps)
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
-            ✓ Intervention #{shortId}
+            Intervention #{shortId}
           </p>
           <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
             {document.equipmentCode}

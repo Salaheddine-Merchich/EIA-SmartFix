@@ -3,13 +3,13 @@ import { LiveAiStatusBadges } from '@/features/live';
 import type { AssistantStatus } from '../types';
 import { ASSISTANT_LAYOUT } from '../constants/layout';
 
-interface PremiumHeaderProps {
+interface AiAssistantHeaderProps {
   status: AssistantStatus;
   onNewConversation: () => void;
   hasMessages: boolean;
 }
 
-function PremiumHeaderComponent({ status, onNewConversation, hasMessages }: PremiumHeaderProps) {
+function AiAssistantHeaderComponent({ status, onNewConversation, hasMessages }: AiAssistantHeaderProps) {
   return (
     <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
       <div
@@ -50,4 +50,4 @@ function PremiumHeaderComponent({ status, onNewConversation, hasMessages }: Prem
   );
 }
 
-export const PremiumHeader = memo(PremiumHeaderComponent);
+export const AiAssistantHeader = memo(AiAssistantHeaderComponent);

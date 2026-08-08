@@ -16,7 +16,7 @@ import EquipmentPage from '@/features/equipment/pages/EquipmentPage';
 import FailuresPage from '@/features/failures/pages/FailuresPage';
 import FailureDetailPage from '@/features/failures/pages/FailureDetailPage';
 import SearchPage from '@/features/search/pages/SearchPage';
-import PremiumAiAssistantPage from '@/features/ai-assistant/pages/PremiumAiAssistantPage';
+import AiAssistantPage from '@/features/ai-assistant/pages/AiAssistantPage';
 import { AiConversationProvider } from '@/features/ai-assistant/context/AiConversationProvider';
 import UsersPage from '@/features/users/pages/UsersPage';
 import ProfilePage from '@/features/profile/pages/ProfilePage';
@@ -66,7 +66,7 @@ const router = createBrowserRouter([
               { path: 'failures', element: <FailuresPage /> },
               { path: 'failures/:id', element: <FailureDetailPage /> },
               { path: 'search', element: <SearchPage /> },
-              { path: 'ai-assistant', element: <PremiumAiAssistantPage /> },
+              { path: 'ai-assistant', element: <AiAssistantPage /> },
               { path: 'profile', element: <ProfilePage /> },
               { path: 'settings', element: <SettingsPage /> },
               {

@@ -37,3 +37,9 @@ app:
         thread-pool-core-size: 2
         thread-pool-max-size: 8
         thread-pool-queue-capacity: 100
+
+# Avoid dumping prompts/embeddings via framework loggers; app code logs lengths only.
+logging:
+  level:
+    org.springframework.ai: INFO
+    org.springframework.ai.chat.client: INFO

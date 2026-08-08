@@ -40,7 +40,7 @@ public class CachedEmbeddingProvider implements EmbeddingProviderPort {
             return cached;
         }
 
-        log.debug("Cache miss embedding, appel Ollama pour: {}", text.substring(0, Math.min(50, text.length())));
+        log.debug("Cache miss embedding, appel Ollama: textLength={}", text != null ? text.length() : 0);
         float[] embedding = delegate.embed(text);
         embeddingCache.put(cacheKey, embedding);
         

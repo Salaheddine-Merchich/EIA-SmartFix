@@ -47,7 +47,11 @@ public class RagAssistStreamUseCase {
      * Génère une assistance IA en streaming via Server-Sent Events
      */
     public Flux<ServerSentEvent<String>> assistStream(AiAssistRequest request) {
-        log.info("Démarrage assistance streaming RAG pour: {}", request.description());
+        String description = request.description() != null ? request.description() : "";
+        log.info("Démarrage assistance streaming RAG: queryLength={}", description.length());
+        if (log.isDebugEnabled()) {
+            log.debug("RAG stream query snippet: {}", truncateForLog(description, 200));
+        }
 
         return Flux.<ServerSentEvent<String>>create(sink -> {
                     try {
@@ -99,15 +103,26 @@ public class RagAssistStreamUseCase {
                                 .data("Génération de l'analyse...")
                                 .build());
 
+                        String systemPrompt = ragPromptBuilder.systemPrompt();
                         String userPrompt = ragPromptBuilder.userPrompt(
                                 request.description(),
                                 retrieval.relevant(),
                                 retrieval.knowledgeDocuments()
                         );
+                        log.info(
+                                "LLM stream start: systemPromptChars={}, userPromptChars={}, interventions={}, docs={}",
+                                systemPrompt.length(),
+                                userPrompt.length(),
+                                retrieval.relevant().size(),
+                                retrieval.knowledgeDocuments().size()
+                        );
+                        if (log.isDebugEnabled()) {
+                            log.debug("LLM stream userPrompt snippet: {}", truncateForLog(userPrompt, 200));
+                        }
                         StringBuilder responseBuffer = new StringBuilder();
                         long llmStart = System.nanoTime();
 
-                        llmProvider.stream(ragPromptBuilder.systemPrompt(), userPrompt)
+                        llmProvider.stream(systemPrompt, userPrompt)
                                 .doOnNext(token -> {
                                     responseBuffer.append(token);
                                     sink.next(ServerSentEvent.<String>builder()
@@ -117,6 +132,15 @@ public class RagAssistStreamUseCase {
                                 })
                                 .doOnComplete(() -> {
                                     long llmDurationMs = (System.nanoTime() - llmStart) / 1_000_000;
+                                    log.info(
+                                            "LLM stream complete: responseChars={}, durationMs={}",
+                                            responseBuffer.length(),
+                                            llmDurationMs
+                                    );
+                                    if (log.isDebugEnabled()) {
+                                        log.debug("LLM stream response snippet: {}",
+                                                truncateForLog(responseBuffer.toString(), 200));
+                                    }
                                     try {
                                         AiSuggestions suggestions = ragSuggestionParser.parse(responseBuffer.toString());
                                         sink.next(ServerSentEvent.<String>builder()
@@ -144,8 +168,13 @@ public class RagAssistStreamUseCase {
                                     sink.complete();
                                 })
                                 .doOnError(error -> {
-                                    log.error("Erreur streaming LLM: {}", error.getMessage());
                                     long llmDurationMs = (System.nanoTime() - llmStart) / 1_000_000;
+                                    log.error(
+                                            "Erreur streaming LLM after {}ms (partialResponseChars={}): {}",
+                                            llmDurationMs,
+                                            responseBuffer.length(),
+                                            error.getMessage()
+                                    );
                                     AiSuggestions fallback = ragSuggestionParser.fallbackFromHistory(
                                             retrieval.relevant(),
                                             retrieval.knowledgeDocuments()
@@ -276,5 +305,15 @@ public class RagAssistStreamUseCase {
             log.error("Erreur sérialisation réponse: {}", e.getMessage());
             return "{\"error\":\"Serialization failed\"}";
         }
+    }
+
+    private static String truncateForLog(String value, int maxChars) {
+        if (value == null) {
+            return "";
+        }
+        if (value.length() <= maxChars) {
+            return value;
+        }
+        return value.substring(0, maxChars) + "...";
     }
 }

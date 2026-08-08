@@ -8,6 +8,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 @Component
 @ConditionalOnExpression("${app.knowledge.enabled:false} == true and '${app.knowledge.provider:ollama}' == 'ollama'")
 @RequiredArgsConstructor
@@ -18,33 +20,78 @@ public class OllamaLlmAdapter implements LlmProviderPort {
 
     @Override
     public String complete(String systemPrompt, String userPrompt) {
-        return chatClient
+        int systemChars = length(systemPrompt);
+        int userChars = length(userPrompt);
+        log.info("Ollama LLM complete start: systemPromptChars={}, userPromptChars={}", systemChars, userChars);
+        if (log.isDebugEnabled()) {
+            log.debug("Ollama LLM userPrompt snippet: {}", truncateForLog(userPrompt, 200));
+        }
+
+        long start = System.nanoTime();
+        String content = chatClient
                 .prompt()
                 .system(systemPrompt)
                 .user(userPrompt)
                 .call()
                 .content();
+
+        long durationMs = (System.nanoTime() - start) / 1_000_000L;
+        int responseChars = length(content);
+        log.info("Ollama LLM complete done: responseChars={}, durationMs={}", responseChars, durationMs);
+        if (log.isDebugEnabled() && content != null) {
+            log.debug("Ollama LLM response snippet: {}", truncateForLog(content, 200));
+        }
+        return content;
     }
 
     @Override
     public Flux<String> stream(String systemPrompt, String userPrompt) {
         try {
-            log.debug("Démarrage streaming LLM pour prompt utilisateur: {}", 
-                     userPrompt.length() > 100 ? userPrompt.substring(0, 100) + "..." : userPrompt);
-            
+            int systemChars = length(systemPrompt);
+            int userChars = length(userPrompt);
+            log.info("Ollama LLM stream start: systemPromptChars={}, userPromptChars={}", systemChars, userChars);
+            if (log.isDebugEnabled()) {
+                log.debug("Ollama LLM stream userPrompt snippet: {}", truncateForLog(userPrompt, 200));
+            }
+
+            AtomicInteger tokenCount = new AtomicInteger();
+            long start = System.nanoTime();
+
             return chatClient
                     .prompt()
                     .system(systemPrompt)
                     .user(userPrompt)
                     .stream()
                     .content()
-                    .doOnNext(token -> log.trace("Token reçu: {}", token))
-                    .doOnComplete(() -> log.debug("Streaming LLM terminé"))
-                    .doOnError(error -> log.error("Erreur streaming LLM: {}", error.getMessage()));
-                    
+                    .doOnNext(token -> tokenCount.incrementAndGet())
+                    .doOnComplete(() -> log.info(
+                            "Ollama LLM stream done: tokenCount={}, durationMs={}",
+                            tokenCount.get(),
+                            (System.nanoTime() - start) / 1_000_000L
+                    ))
+                    .doOnError(error -> log.error(
+                            "Erreur streaming LLM after {} tokens: {}",
+                            tokenCount.get(),
+                            error.getMessage()
+                    ));
+
         } catch (Exception e) {
             log.error("Erreur lors de l'initialisation du streaming LLM: {}", e.getMessage());
             return Flux.error(e);
         }
+    }
+
+    private static int length(String value) {
+        return value != null ? value.length() : 0;
+    }
+
+    private static String truncateForLog(String value, int maxChars) {
+        if (value == null) {
+            return "";
+        }
+        if (value.length() <= maxChars) {
+            return value;
+        }
+        return value.substring(0, maxChars) + "...";
     }
 }

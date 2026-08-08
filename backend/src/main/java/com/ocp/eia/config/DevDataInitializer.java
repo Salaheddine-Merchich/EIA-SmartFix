@@ -27,7 +27,7 @@ public class DevDataInitializer {
             updatePassword("admin@ocp.ma", defaultPassword);
             updatePassword("responsable@ocp.ma", defaultPassword);
             updatePassword("technicien@ocp.ma", defaultPassword);
-            log.info("Mots de passe demo initialisés (Password123!)");
+            log.info("Mots de passe demo initialisés pour les comptes de développement");
         };
     }
 

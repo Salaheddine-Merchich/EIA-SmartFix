@@ -57,8 +57,8 @@ public class ResilientEmbeddingProvider implements EmbeddingProviderPort {
             return result;
             
         } catch (TimeoutException e) {
-            log.error("Timeout embedding après {}ms pour: {}", timeout.toMillis(), 
-                     text.length() > 50 ? text.substring(0, 50) + "..." : text);
+            log.error("Timeout embedding après {}ms (textLength={})", timeout.toMillis(),
+                    text != null ? text.length() : 0);
             onFailure();
             throw new RuntimeException("Embedding timeout", e);
             

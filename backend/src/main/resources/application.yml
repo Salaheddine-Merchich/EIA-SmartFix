@@ -42,3 +42,11 @@ springdoc:
     path: /api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+logging:
+  level:
+    root: INFO
+    com.ocp.eia: INFO
+    org.hibernate.SQL: WARN
+    org.springframework.security: INFO
+    org.springframework.ai: INFO

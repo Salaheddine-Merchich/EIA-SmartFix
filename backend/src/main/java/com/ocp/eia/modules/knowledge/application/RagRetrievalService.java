@@ -44,6 +44,8 @@ public class RagRetrievalService {
         int topK = request.topK() != null ? request.topK() : appProperties.getAi().getRag().getTopK();
         boolean hybridEnabled = appProperties.getAi().getRag().isHybridTextEnabled();
         long retrievalStart = System.nanoTime();
+        int queryLength = request.description() != null ? request.description().length() : 0;
+        log.info("RAG retrieve start: queryLength={}, topK={}, hybrid={}", queryLength, topK, hybridEnabled);
 
         float[] queryEmbedding;
         String embeddingStatus;
@@ -51,7 +53,7 @@ public class RagRetrievalService {
             queryEmbedding = embeddingProvider.embed(request.description());
             embeddingStatus = "OK";
         } catch (Exception e) {
-            log.error("Erreur embedding RAG: {}", e.getMessage());
+            log.error("Erreur embedding RAG (queryLength={}): {}", queryLength, e.getMessage());
             return RetrievalOutcome.unavailable(
                     hybridEnabled,
                     elapsedMs(retrievalStart),
@@ -171,6 +173,18 @@ public class RagRetrievalService {
                 .toList();
         ragRetrievalMetrics.recordFilteredCount(relevant.size());
 
+        long retrievalDurationMs = elapsedMs(retrievalStart);
+        log.info(
+                "RAG retrieve done: durationMs={}, vector={}, text={}, merged={}, relevant={}, knowledgeDocs={}, embeddingStatus={}",
+                retrievalDurationMs,
+                vectorResults.size(),
+                textResults.size(),
+                similar.size(),
+                relevant.size(),
+                knowledgeResults.size(),
+                embeddingStatus
+        );
+
         return new RetrievalOutcome(
                 relevant,
                 knowledgeResults,
@@ -181,7 +195,7 @@ public class RagRetrievalService {
                 similar.size(),
                 embeddingStatus,
                 hybridEnabled,
-                elapsedMs(retrievalStart),
+                retrievalDurationMs,
                 false,
                 null
         );

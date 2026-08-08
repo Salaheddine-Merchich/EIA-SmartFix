@@ -60,6 +60,11 @@ public class RagAssistUseCase {
 
     private AiAssistResponse assistInternal(AiAssistRequest request) {
         ragObservabilityService.incrementActiveQueries();
+        String description = request.description() != null ? request.description() : "";
+        log.info("Démarrage assistance RAG: queryLength={}", description.length());
+        if (log.isDebugEnabled()) {
+            log.debug("RAG assist query snippet: {}", truncateForLog(description, 200));
+        }
 
         try {
             RetrievalOutcome outcome = ragRetrievalService.retrieve(request);
@@ -106,6 +111,15 @@ public class RagAssistUseCase {
                     suggestionResult.suggestions(),
                     DISCLAIMER,
                     AiDiagnosticTraceMapper.toDto(trace)
+            );
+
+            log.info(
+                    "Assistance RAG terminée: retrievalMs={}, llmMs={}, interventions={}, docs={}, embeddingStatus={}",
+                    outcome.retrievalDurationMs(),
+                    suggestionResult.llmDurationMs(),
+                    relevant.size(),
+                    knowledgeResults.size(),
+                    outcome.embeddingStatus()
             );
 
             ragObservabilityService.recordSuccessfulQuery();
@@ -215,15 +229,32 @@ public class RagAssistUseCase {
             return new SuggestionResult(ragSuggestionParser.noEvidenceFallback(), 0L);
         }
 
+        String systemPrompt = ragPromptBuilder.systemPrompt();
         String userPrompt = ragPromptBuilder.userPrompt(description, similar, knowledgeDocuments);
+        log.info(
+                "LLM complete start: systemPromptChars={}, userPromptChars={}, interventions={}, docs={}",
+                systemPrompt.length(),
+                userPrompt.length(),
+                similar.size(),
+                knowledgeDocuments.size()
+        );
+        if (log.isDebugEnabled()) {
+            log.debug("LLM userPrompt snippet: {}", truncateForLog(userPrompt, 200));
+        }
 
         long llmStart = System.nanoTime();
         try {
             ragRetrievalMetrics.recordLlmCall();
-            String response = llmProvider.complete(ragPromptBuilder.systemPrompt(), userPrompt);
-            return new SuggestionResult(ragSuggestionParser.parse(response), elapsedMs(llmStart));
+            String response = llmProvider.complete(systemPrompt, userPrompt);
+            long durationMs = elapsedMs(llmStart);
+            int responseChars = response != null ? response.length() : 0;
+            log.info("LLM complete done: responseChars={}, durationMs={}", responseChars, durationMs);
+            if (log.isDebugEnabled() && response != null) {
+                log.debug("LLM response snippet: {}", truncateForLog(response, 200));
+            }
+            return new SuggestionResult(ragSuggestionParser.parse(response), durationMs);
         } catch (Exception e) {
-            log.error("Erreur génération LLM: {}", e.getMessage());
+            log.error("Erreur génération LLM after {}ms: {}", elapsedMs(llmStart), e.getMessage());
             return new SuggestionResult(
                     ragSuggestionParser.fallbackFromHistory(similar, knowledgeDocuments),
                     elapsedMs(llmStart)
@@ -233,6 +264,16 @@ public class RagAssistUseCase {
 
     private static long elapsedMs(long startNano) {
         return (System.nanoTime() - startNano) / 1_000_000L;
+    }
+
+    private static String truncateForLog(String value, int maxChars) {
+        if (value == null) {
+            return "";
+        }
+        if (value.length() <= maxChars) {
+            return value;
+        }
+        return value.substring(0, maxChars) + "...";
     }
 
     private record SuggestionResult(AiSuggestions suggestions, long llmDurationMs) {}

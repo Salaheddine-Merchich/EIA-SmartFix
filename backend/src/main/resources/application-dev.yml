@@ -24,4 +24,7 @@ app:
 logging:
   level:
     com.ocp.eia: DEBUG
+    org.hibernate.SQL: INFO
+    org.hibernate.orm.jdbc.bind: WARN
     org.springframework.security: INFO
+    org.springframework.ai: INFO

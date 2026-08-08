@@ -31,7 +31,7 @@ public class KnowledgeDocument {
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    @Convert(converter = com.ocp.eia.modules.knowledge.infrastructure.persistence.DocumentTypeConverter.class)
+    @Convert(converter = DocumentTypeConverter.class)
     @Column(name = "document_type", nullable = false, length = 100)
     private DocumentType documentType;
 

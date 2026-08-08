@@ -64,7 +64,7 @@ class LoginUseCaseTest {
 
     @Test
     void execute_authenticatesWithEmailAndPassword() {
-        LoginRequest request = new LoginRequest("tech@ocp.ma", "secret");
+        LoginRequest request = new LoginRequest("tech@ocp.ma", "Password123!");
         User user = User.builder().email("tech@ocp.ma").nomPrenom("Tech").role(Role.TECHNICIEN).build();
         UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
                 .username("tech@ocp.ma")
@@ -80,7 +80,7 @@ class LoginUseCaseTest {
         useCase.execute(request);
 
         verify(authenticationManager).authenticate(
-                new UsernamePasswordAuthenticationToken("tech@ocp.ma", "secret")
+                new UsernamePasswordAuthenticationToken("tech@ocp.ma", "Password123!")
         );
     }
 }

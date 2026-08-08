@@ -1,4 +1,4 @@
-package com.ocp.eia.modules.knowledge.infrastructure.persistence;
+package com.ocp.eia.modules.knowledge.domain.model;
 
 import com.ocp.eia.modules.knowledge.domain.model.KnowledgeDocument.DocumentType;
 import jakarta.persistence.AttributeConverter;

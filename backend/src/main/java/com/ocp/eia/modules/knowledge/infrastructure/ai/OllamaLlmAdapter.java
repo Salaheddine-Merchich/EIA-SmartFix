@@ -4,6 +4,7 @@ import com.ocp.eia.modules.knowledge.domain.port.LlmProviderPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
@@ -12,6 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 @ConditionalOnExpression("${app.knowledge.enabled:false} == true and '${app.knowledge.provider:ollama}' == 'ollama'")
+@ConditionalOnBean(ChatClient.class)
 @RequiredArgsConstructor
 @Slf4j
 public class OllamaLlmAdapter implements LlmProviderPort {

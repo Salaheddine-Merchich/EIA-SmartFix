@@ -68,6 +68,7 @@ import static org.mockito.Mockito.*;
 @SpringBootTest(properties = {
         "spring.autoconfigure.exclude=org.springframework.ai.autoconfigure.ollama.OllamaAutoConfiguration",
         "app.knowledge.enabled=true",
+        "app.knowledge.provider=mock",
         "spring.main.allow-bean-definition-overriding=true"
 })
 @Testcontainers
@@ -470,7 +471,7 @@ class KnowledgeRagIntegrationTest {
         validateInterventionUseCase.execute(intervention.getId(), new ValidationRequest(true, "Validé E001"));
         assertTrue(embeddingExists(intervention.getId()), "précondition : intervention indexée");
 
-        doReturn(List.of()).when(vectorStorePort).findSimilar(any(float[].class), anyInt());
+        doReturn(List.of()).when(vectorStorePort).findSimilar(any(float[].class), anyInt(), any());
 
         String llmJson = """
                 {"probableCauses":["Paramétrage incorrect"],"correctiveActions":["Réinitialiser paramètres usine"],"summary":"Piste E001","advice":"Vérifier paramètres"}
@@ -486,7 +487,7 @@ class KnowledgeRagIntegrationTest {
         assertTrue(response.similarInterventions().get(0).similarity() >= 0.70,
                 "Le score ILIKE (0.75) doit passer le seuil");
         assertEquals("Paramétrage incorrect", response.suggestions().probableCauses().get(0));
-        verify(vectorStorePort, atLeastOnce()).findSimilar(any(float[].class), eq(5));
+        verify(vectorStorePort, atLeastOnce()).findSimilar(any(float[].class), eq(5), any());
         verify(llmProviderPort, times(1)).complete(anyString(), contains("Paramétrage incorrect"));
     }
 }

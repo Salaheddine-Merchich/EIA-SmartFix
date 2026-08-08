@@ -41,6 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = {
         "spring.autoconfigure.exclude=org.springframework.ai.autoconfigure.ollama.OllamaAutoConfiguration",
         "app.knowledge.enabled=true",
+        "app.knowledge.provider=mock",
         "spring.main.allow-bean-definition-overriding=true"
 })
 @AutoConfigureMockMvc

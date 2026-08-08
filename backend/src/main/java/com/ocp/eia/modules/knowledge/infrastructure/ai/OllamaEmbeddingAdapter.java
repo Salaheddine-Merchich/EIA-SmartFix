@@ -3,11 +3,13 @@ package com.ocp.eia.modules.knowledge.infrastructure.ai;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.ollama.OllamaEmbeddingModel;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
 @Component
 @ConditionalOnExpression("${app.knowledge.enabled:false} == true and '${app.knowledge.provider:ollama}' == 'ollama'")
+@ConditionalOnBean(OllamaEmbeddingModel.class)
 @RequiredArgsConstructor
 @Slf4j
 public class OllamaEmbeddingAdapter {

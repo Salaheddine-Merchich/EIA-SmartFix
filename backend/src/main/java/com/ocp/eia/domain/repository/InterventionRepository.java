@@ -4,11 +4,11 @@ import com.ocp.eia.domain.model.Intervention;
 import com.ocp.eia.domain.model.StatutValidation;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,15 +30,23 @@ public interface InterventionRepository extends JpaRepository<Intervention, UUID
 
     Page<Intervention> findByFailureId(UUID failureId, Pageable pageable);
 
-    @EntityGraph(attributePaths = {
-            "documents",
-            "failure",
-            "failure.equipment",
-            "technicien",
-            "validateur"
-    })
-    @Query("SELECT i FROM Intervention i WHERE i.failure.id = :failureId")
-    Page<Intervention> findByFailureIdWithDocuments(@Param("failureId") UUID failureId, Pageable pageable);
+    @Query("""
+            SELECT i.failure.id, COUNT(i)
+            FROM Intervention i
+            WHERE i.failure.id IN :ids
+            GROUP BY i.failure.id
+            """)
+    List<Object[]> countByFailureIds(@Param("ids") Collection<UUID> ids);
+
+    @Query("""
+            SELECT i.failure.id, i.statutValidation
+            FROM Intervention i
+            WHERE i.failure.id IN :ids
+            AND i.createdAt = (
+                SELECT MAX(i2.createdAt) FROM Intervention i2 WHERE i2.failure.id = i.failure.id
+            )
+            """)
+    List<Object[]> findLatestStatutByFailureIds(@Param("ids") Collection<UUID> ids);
 
     List<Intervention> findByFailureEquipmentIdOrderByCreatedAtDesc(UUID equipmentId);
 

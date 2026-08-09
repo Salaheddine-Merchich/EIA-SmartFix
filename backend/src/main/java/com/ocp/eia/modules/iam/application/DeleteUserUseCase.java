@@ -1,7 +1,7 @@
 package com.ocp.eia.modules.iam.application;
 
 import com.ocp.eia.domain.repository.UserRepository;
-import com.ocp.eia.presentation.exception.ResourceNotFoundException;
+import com.ocp.eia.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

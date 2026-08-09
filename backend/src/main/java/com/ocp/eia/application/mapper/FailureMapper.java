@@ -12,6 +12,7 @@ import java.util.List;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface FailureMapper {
 
+    @Named("withInterventionStats")
     @Mapping(target = "equipmentId", source = "equipment.id")
     @Mapping(target = "equipmentCode", source = "equipment.code")
     @Mapping(target = "equipmentDesignation", source = "equipment.designation")
@@ -23,6 +24,19 @@ public interface FailureMapper {
     @Mapping(target = "latestInterventionStatut", expression = "java(latestInterventionStatut(failure))")
     FailureResponse toResponse(Failure failure);
 
+    @Named("withoutInterventionStats")
+    @Mapping(target = "equipmentId", source = "equipment.id")
+    @Mapping(target = "equipmentCode", source = "equipment.code")
+    @Mapping(target = "equipmentDesignation", source = "equipment.designation")
+    @Mapping(target = "declarantId", source = "declarant.id")
+    @Mapping(target = "declarantNom", source = "declarant.nomPrenom")
+    @Mapping(target = "responsableId", source = "responsable.id")
+    @Mapping(target = "responsableNom", source = "responsable.nomPrenom")
+    @Mapping(target = "interventionCount", constant = "0")
+    @Mapping(target = "latestInterventionStatut", ignore = true)
+    FailureResponse toResponseWithoutInterventionStats(Failure failure);
+
+    @IterableMapping(qualifiedByName = "withInterventionStats")
     List<FailureResponse> toResponseList(List<Failure> failures);
 
     default int interventionCount(Failure failure) {

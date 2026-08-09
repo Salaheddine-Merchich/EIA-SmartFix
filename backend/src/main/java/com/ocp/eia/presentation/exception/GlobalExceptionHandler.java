@@ -1,7 +1,10 @@
 package com.ocp.eia.presentation.exception;
 
 import com.ocp.eia.application.dto.CommonDto.ApiErrorResponse;
+import com.ocp.eia.shared.exception.BadRequestException;
+import com.ocp.eia.shared.exception.ConflictException;
 import com.ocp.eia.shared.exception.DomainRuleViolationException;
+import com.ocp.eia.shared.exception.ResourceNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -48,11 +51,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ApiErrorResponse> handleConflict(ConflictException ex) {
         return build(HttpStatus.CONFLICT, "CONFLICT", ex.getMessage(), null);
-    }
-
-    @ExceptionHandler(ForbiddenException.class)
-    public ResponseEntity<ApiErrorResponse> handleForbidden(ForbiddenException ex) {
-        return build(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage(), null);
     }
 
     @ExceptionHandler(BadCredentialsException.class)

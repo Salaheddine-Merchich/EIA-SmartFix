@@ -38,7 +38,11 @@ Alias TypeScript : `@/` → `src/`.
 
 ## TanStack Query
 
-`QueryClientProvider` est monté dans `app/App.tsx`. Les hooks métier (`useFailuresList`, `useEquipmentList`, `useUsers`, …) utilisent `useQuery` / `useMutation` avec invalidation ciblée après écriture.
+`QueryClientProvider` est monté dans `app/App.tsx`. Les hooks métier (`useFailuresList`, `useEquipmentList`, `useUsers`, `useSearch`, `useRecurringDefects`, …) utilisent `useQuery` / `useMutation` avec invalidation ciblée après écriture.
+
+## Routes
+
+Dashboard et assistant IA sont chargés en `React.lazy` depuis `app/App.tsx` (bundle initial allégé).
 
 ## Design system
 

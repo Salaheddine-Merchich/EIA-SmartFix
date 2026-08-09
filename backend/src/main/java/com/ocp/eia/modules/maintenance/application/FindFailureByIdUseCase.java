@@ -3,7 +3,7 @@ package com.ocp.eia.modules.maintenance.application;
 import com.ocp.eia.application.dto.FailureDto.FailureResponse;
 import com.ocp.eia.application.mapper.FailureMapper;
 import com.ocp.eia.domain.repository.FailureRepository;
-import com.ocp.eia.presentation.exception.ResourceNotFoundException;
+import com.ocp.eia.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

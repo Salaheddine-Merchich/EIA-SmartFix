@@ -33,6 +33,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             jwt = authHeader.substring(7);
         } else {
+            // SECURITY DEBT: EventSource (SSE) cannot set Authorization headers in browsers.
+            // Query-string tokens can leak via proxies/logs. Keep until SSE migrates to
+            // cookie/httpOnly or fetch-stream with headers. See docs/SECURITY.md.
             String queryToken = request.getParameter("access_token");
             if (queryToken != null && !queryToken.isBlank()) {
                 jwt = queryToken;

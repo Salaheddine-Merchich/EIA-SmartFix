@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import type { KpiCardData } from '../types';
-import { staggerContainer } from '@/features/ai-assistant/animations';
+import { staggerContainer } from '@/design-system/animations';
 import { KpiCard } from './KpiCard';
 
 interface KpiGridProps {

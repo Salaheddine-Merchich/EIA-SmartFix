@@ -6,7 +6,7 @@ import com.ocp.eia.application.mapper.UserMapper;
 import com.ocp.eia.domain.model.Role;
 import com.ocp.eia.domain.model.User;
 import com.ocp.eia.domain.repository.UserRepository;
-import com.ocp.eia.presentation.exception.ConflictException;
+import com.ocp.eia.shared.exception.ConflictException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;

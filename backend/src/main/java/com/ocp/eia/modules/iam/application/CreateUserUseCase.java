@@ -5,7 +5,7 @@ import com.ocp.eia.application.dto.UserDto.UserResponse;
 import com.ocp.eia.application.mapper.UserMapper;
 import com.ocp.eia.domain.model.User;
 import com.ocp.eia.domain.repository.UserRepository;
-import com.ocp.eia.presentation.exception.ConflictException;
+import com.ocp.eia.shared.exception.ConflictException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

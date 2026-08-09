@@ -52,6 +52,15 @@ function Probe() {
   );
 }
 
+const storedUser = {
+  accessToken: 'access',
+  refreshToken: 'refresh',
+  tokenType: 'Bearer',
+  role: 'ADMIN' as const,
+  nomPrenom: 'Admin',
+  email: 'admin@ocp.ma',
+};
+
 describe('AuthContext', () => {
   beforeEach(() => {
     stubLocalStorage();
@@ -92,19 +101,63 @@ describe('AuthContext', () => {
     expect(localStorage.getItem('refreshToken')).toBe('refresh');
   });
 
+  it('refreshes on bootstrap even when accessToken is already present', async () => {
+    stubLocalStorage({
+      accessToken: 'stale-access',
+      refreshToken: 'refresh',
+      user: JSON.stringify(storedUser),
+    });
+    vi.mocked(refreshAccessToken).mockImplementation(async () => {
+      localStorage.setItem('accessToken', 'fresh-access');
+      localStorage.setItem(
+        'user',
+        JSON.stringify({ ...storedUser, accessToken: 'fresh-access' }),
+      );
+      return 'fresh-access';
+    });
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
+    });
+    expect(refreshAccessToken).toHaveBeenCalled();
+    expect(screen.getByTestId('email')).toHaveTextContent('admin@ocp.ma');
+    expect(localStorage.getItem('accessToken')).toBe('fresh-access');
+  });
+
+  it('clears session when bootstrap refresh fails', async () => {
+    stubLocalStorage({
+      accessToken: 'stale-access',
+      refreshToken: 'refresh',
+      user: JSON.stringify(storedUser),
+    });
+    vi.mocked(refreshAccessToken).mockResolvedValue(null);
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bootstrapping')).toHaveTextContent('false');
+    });
+    expect(clearAuthSession).toHaveBeenCalled();
+    expect(screen.getByTestId('authenticated')).toHaveTextContent('false');
+  });
+
   it('clears session on logout', async () => {
     stubLocalStorage({
       accessToken: 'access',
       refreshToken: 'refresh',
-      user: JSON.stringify({
-        accessToken: 'access',
-        refreshToken: 'refresh',
-        tokenType: 'Bearer',
-        role: 'ADMIN',
-        nomPrenom: 'Admin',
-        email: 'admin@ocp.ma',
-      }),
+      user: JSON.stringify(storedUser),
     });
+    vi.mocked(refreshAccessToken).mockResolvedValue('access');
 
     render(
       <AuthProvider>

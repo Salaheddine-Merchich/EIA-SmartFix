@@ -5,30 +5,30 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ocp.eia.application.dto.AiDto.AiAssistRequest;
 import com.ocp.eia.application.dto.AiDto.AiAssistResponse;
 import com.ocp.eia.application.dto.AiDto.AiSuggestions;
-import com.ocp.eia.application.dto.AiDto.SimilarInterventionDto;
+import com.ocp.eia.config.AppProperties;
 import com.ocp.eia.modules.knowledge.application.RagRetrievalService.RetrievalOutcome;
 import com.ocp.eia.modules.knowledge.domain.model.AiDiagnosticTrace;
-import com.ocp.eia.modules.knowledge.domain.model.RetrievedDocument;
-import com.ocp.eia.modules.knowledge.domain.model.SimilarIntervention;
 import com.ocp.eia.modules.knowledge.domain.port.LlmProviderPort;
+import com.ocp.eia.modules.knowledge.infrastructure.observability.RagObservabilityService;
+import com.ocp.eia.modules.knowledge.infrastructure.observability.RagRetrievalMetrics;
+import com.ocp.eia.modules.monitoring.application.event.AiServiceUnavailableEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 @ConditionalOnProperty(name = "app.knowledge.enabled", havingValue = "true")
 @RequiredArgsConstructor
 @Slf4j
 public class RagAssistStreamUseCase {
-
-    private static final String DISCLAIMER =
-            "Assistance uniquement — les décisions finales restent celles du technicien ou de l'ingénieur.";
 
     private static final AiSuggestions UNAVAILABLE_SUGGESTIONS = new AiSuggestions(
             List.of("L'assistance IA est temporairement indisponible"),
@@ -42,6 +42,11 @@ public class RagAssistStreamUseCase {
     private final RagSuggestionParser ragSuggestionParser;
     private final LlmProviderPort llmProvider;
     private final ObjectMapper objectMapper;
+    private final AppProperties appProperties;
+    private final RagObservabilityService ragObservabilityService;
+    private final RagRetrievalMetrics ragRetrievalMetrics;
+    private final AiDiagnosticStatsService diagnosticStatsService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Génère une assistance IA en streaming via Server-Sent Events
@@ -53,6 +58,9 @@ public class RagAssistStreamUseCase {
             log.debug("RAG stream query snippet: {}", truncateForLog(description, 200));
         }
 
+        Duration streamTimeout = DurationParse.of(appProperties.getAi().getRag().getPerformance().getLlmTimeout());
+        AtomicBoolean recordedOutcome = new AtomicBoolean(false);
+
         return Flux.<ServerSentEvent<String>>create(sink -> {
                     try {
                         sink.next(ServerSentEvent.<String>builder()
@@ -62,6 +70,8 @@ public class RagAssistStreamUseCase {
 
                         RetrievalOutcome retrieval = ragRetrievalService.retrieve(request);
                         if (retrieval.unavailable()) {
+                            publishAiUnavailable(retrieval.unavailableReason());
+                            recordFallbackOnce(recordedOutcome);
                             sink.next(ServerSentEvent.<String>builder()
                                     .event("error")
                                     .data(retrieval.unavailableReason() != null
@@ -88,6 +98,7 @@ public class RagAssistStreamUseCase {
                                     .data("Aucun document similaire trouvé, conseil générique...")
                                     .build());
 
+                            recordFallbackOnce(recordedOutcome);
                             AiSuggestions fallback = ragSuggestionParser.noEvidenceFallback();
                             sink.next(ServerSentEvent.<String>builder()
                                     .event("complete")
@@ -121,6 +132,7 @@ public class RagAssistStreamUseCase {
                         }
                         StringBuilder responseBuffer = new StringBuilder();
                         long llmStart = System.nanoTime();
+                        ragRetrievalMetrics.recordLlmCall();
 
                         llmProvider.stream(systemPrompt, userPrompt)
                                 .doOnNext(token -> {
@@ -143,12 +155,14 @@ public class RagAssistStreamUseCase {
                                     }
                                     try {
                                         AiSuggestions suggestions = ragSuggestionParser.parse(responseBuffer.toString());
+                                        recordSuccessOnce(recordedOutcome);
                                         sink.next(ServerSentEvent.<String>builder()
                                                 .event("complete")
                                                 .data(serializeResponse(buildResponse(request, retrieval, suggestions, llmDurationMs)))
                                                 .build());
                                     } catch (Exception e) {
                                         log.error("Erreur parsing réponse streaming: {}", e.getMessage());
+                                        recordFallbackOnce(recordedOutcome);
                                         AiSuggestions fallback = ragSuggestionParser.fallbackFromHistory(
                                                 retrieval.relevant(),
                                                 retrieval.knowledgeDocuments()
@@ -175,6 +189,7 @@ public class RagAssistStreamUseCase {
                                             responseBuffer.length(),
                                             error.getMessage()
                                     );
+                                    recordFallbackOnce(recordedOutcome);
                                     AiSuggestions fallback = ragSuggestionParser.fallbackFromHistory(
                                             retrieval.relevant(),
                                             retrieval.knowledgeDocuments()
@@ -196,12 +211,15 @@ public class RagAssistStreamUseCase {
 
                     } catch (Exception e) {
                         log.error("Erreur critique lors de l'assistance streaming: {}", e.getMessage());
+                        ragObservabilityService.recordError("assist_stream_internal_error");
                         sink.error(e);
                     }
                 })
-                .timeout(Duration.ofSeconds(30))
+                .timeout(streamTimeout)
                 .onErrorResume(error -> {
                     log.error("Timeout ou erreur dans le streaming: {}", error.getMessage());
+                    recordFallbackOnce(recordedOutcome);
+                    publishAiUnavailable("Timeout ou erreur système");
                     AiSuggestions fallback = ragSuggestionParser.noEvidenceFallback();
                     RetrievalOutcome emptyRetrieval = RetrievalOutcome.unavailable(false, 0L, "FAILED", "Timeout ou erreur système");
                     String completePayload = serializeResponse(
@@ -216,7 +234,25 @@ public class RagAssistStreamUseCase {
                                     .data(completePayload)
                                     .build()
                     );
-                });
+                })
+                .doOnSubscribe(subscription -> ragObservabilityService.incrementActiveQueries())
+                .doFinally(signal -> ragObservabilityService.decrementActiveQueries());
+    }
+
+    private void recordSuccessOnce(AtomicBoolean recordedOutcome) {
+        if (recordedOutcome.compareAndSet(false, true)) {
+            ragObservabilityService.recordSuccessfulQuery();
+        }
+    }
+
+    private void recordFallbackOnce(AtomicBoolean recordedOutcome) {
+        if (recordedOutcome.compareAndSet(false, true)) {
+            ragObservabilityService.recordFallbackResponse();
+        }
+    }
+
+    private void publishAiUnavailable(String reason) {
+        eventPublisher.publishEvent(new AiServiceUnavailableEvent(reason));
     }
 
     private AiAssistResponse buildResponse(
@@ -225,18 +261,7 @@ public class RagAssistStreamUseCase {
             AiSuggestions suggestions,
             long llmDurationMs
     ) {
-        List<SimilarInterventionDto> similarDtos = retrieval.relevant().stream()
-                .map(s -> new SimilarInterventionDto(
-                        s.interventionId(),
-                        s.equipmentCode(),
-                        s.symptomes(),
-                        s.causeRacine(),
-                        s.actionsCorrectives(),
-                        s.similarity()
-                ))
-                .toList();
-
-        AiDiagnosticTrace trace = buildTrace(
+        AiDiagnosticTrace trace = AiDiagnosticTraceFactory.buildTrace(
                 request.description(),
                 retrieval.relevant(),
                 retrieval.vectorCount(),
@@ -247,55 +272,13 @@ public class RagAssistStreamUseCase {
                 retrieval.retrievalDurationMs(),
                 llmDurationMs
         );
+        diagnosticStatsService.record(trace);
+        if (suggestions != null
+                && (suggestions.probableCauses().isEmpty() || suggestions.correctiveActions().isEmpty())) {
+            ragObservabilityService.recordLowConfidenceResponse();
+        }
 
-        return new AiAssistResponse(
-                similarDtos,
-                suggestions,
-                DISCLAIMER,
-                AiDiagnosticTraceMapper.toDto(trace)
-        );
-    }
-
-    private AiDiagnosticTrace buildTrace(
-            String query,
-            List<SimilarIntervention> relevant,
-            int vectorCount,
-            int textCount,
-            int mergedCount,
-            String embeddingStatus,
-            boolean hybridEnabled,
-            long retrievalDurationMs,
-            long llmDurationMs
-    ) {
-        List<RetrievedDocument> documents = relevant.stream()
-                .map(s -> new RetrievedDocument(
-                        s.interventionId(),
-                        s.equipmentCode(),
-                        s.symptomes(),
-                        s.causeRacine(),
-                        s.similarity()
-                ))
-                .toList();
-
-        double averageSimilarity = relevant.isEmpty()
-                ? 0.0
-                : relevant.stream().mapToDouble(SimilarIntervention::similarity).average().orElse(0.0);
-        double confidenceScore = ConfidenceCalculator.compute(averageSimilarity, relevant.size());
-
-        return new AiDiagnosticTrace(
-                query,
-                documents,
-                vectorCount,
-                textCount,
-                mergedCount,
-                relevant.size(),
-                averageSimilarity,
-                confidenceScore,
-                retrievalDurationMs,
-                llmDurationMs,
-                embeddingStatus,
-                hybridEnabled
-        );
+        return AiDiagnosticTraceFactory.toResponse(retrieval.relevant(), suggestions, trace);
     }
 
     private String serializeResponse(AiAssistResponse response) {

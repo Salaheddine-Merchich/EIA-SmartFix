@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -69,6 +70,14 @@ public interface FailureRepository extends JpaRepository<Failure, UUID> {
     List<Failure> findByEquipmentIdWithDetails(@Param("equipmentId") UUID equipmentId);
 
     long countByEquipmentId(UUID equipmentId);
+
+    @Query("""
+            SELECT f.equipment.id, COUNT(f)
+            FROM Failure f
+            WHERE f.equipment.id IN :ids
+            GROUP BY f.equipment.id
+            """)
+    List<Object[]> countByEquipmentIds(@Param("ids") Collection<UUID> ids);
 
     long countByStatut(StatutPanne statut);
 }

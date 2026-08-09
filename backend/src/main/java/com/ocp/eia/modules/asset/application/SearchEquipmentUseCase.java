@@ -12,7 +12,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -25,14 +28,31 @@ public class SearchEquipmentUseCase {
 
     public PageResponse<EquipmentResponse> execute(String search, String famille, String zone, Pageable pageable) {
         Page<Equipment> page = equipmentRepository.search(search, famille, zone, pageable);
-        List<EquipmentResponse> content = page.getContent().stream()
-                .map(this::toResponseWithFailureCount)
+        List<Equipment> equipmentList = page.getContent();
+        Map<UUID, Long> failureCounts = loadFailureCounts(equipmentList);
+
+        List<EquipmentResponse> content = equipmentList.stream()
+                .map(equipment -> toResponseWithFailureCount(
+                        equipment,
+                        failureCounts.getOrDefault(equipment.getId(), 0L)
+                ))
                 .toList();
         return new PageResponse<>(content, page.getTotalElements(), page.getTotalPages(), page.getNumber(), page.getSize());
     }
 
-    private EquipmentResponse toResponseWithFailureCount(Equipment equipment) {
-        long count = failureRepository.countByEquipmentId(equipment.getId());
+    private Map<UUID, Long> loadFailureCounts(List<Equipment> equipmentList) {
+        if (equipmentList.isEmpty()) {
+            return Map.of();
+        }
+        List<UUID> ids = equipmentList.stream().map(Equipment::getId).toList();
+        Map<UUID, Long> counts = new HashMap<>();
+        for (Object[] row : failureRepository.countByEquipmentIds(ids)) {
+            counts.put((UUID) row[0], ((Number) row[1]).longValue());
+        }
+        return counts;
+    }
+
+    private EquipmentResponse toResponseWithFailureCount(Equipment equipment, long count) {
         EquipmentResponse base = equipmentMapper.toResponse(equipment);
         return new EquipmentResponse(base.id(), base.code(), base.designation(), base.famille(),
                 base.zone(), base.constructeur(), base.miseEnService(), count);

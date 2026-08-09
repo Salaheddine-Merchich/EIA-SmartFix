@@ -69,18 +69,8 @@ public class PgVectorStoreAdapter implements VectorStorePort {
         
         List<Object> params = new ArrayList<>();
         params.add(vectorLiteral);
-        
-        // Ajouter filtres contextuels si présents
-        if (context.equipmentId() != null) {
-            queryBuilder.append(" AND e.id = ?");
-            params.add(context.equipmentId());
-        } else if (context.equipmentFamily() != null) {
-            queryBuilder.append(" AND LOWER(e.famille) = LOWER(?)");
-            params.add(context.equipmentFamily());
-        } else if (context.equipmentZone() != null) {
-            queryBuilder.append(" AND LOWER(e.zone) = LOWER(?)");
-            params.add(context.equipmentZone());
-        }
+
+        // Soft filter: no hard equipment/family/zone WHERE — boost matching rows in Java below
         
         queryBuilder.append(" ORDER BY ie.embedding <=> ?::vector LIMIT ?");
         params.add(vectorLiteral);

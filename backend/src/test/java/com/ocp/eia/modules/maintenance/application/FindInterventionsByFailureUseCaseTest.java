@@ -32,15 +32,18 @@ class FindInterventionsByFailureUseCaseTest {
     private FindInterventionsByFailureUseCase useCase;
 
     @Test
-    void execute_returnsPagedResponse() {
+    void execute_pagesThenHydratesDetails() {
         UUID failureId = UUID.randomUUID();
+        UUID interventionId = UUID.randomUUID();
         PageRequest pageable = PageRequest.of(0, 20);
-        Intervention intervention = Intervention.builder().id(UUID.randomUUID()).build();
+        Intervention intervention = Intervention.builder().id(interventionId).build();
+        Intervention hydrated = Intervention.builder().id(interventionId).description("hydrated").build();
         Page<Intervention> page = new PageImpl<>(List.of(intervention), pageable, 1);
         InterventionResponse response = mock(InterventionResponse.class);
 
-        when(interventionRepository.findByFailureIdWithDocuments(failureId, pageable)).thenReturn(page);
-        when(interventionMapper.toResponseList(page.getContent())).thenReturn(List.of(response));
+        when(interventionRepository.findByFailureId(failureId, pageable)).thenReturn(page);
+        when(interventionRepository.findAllByIdWithDetails(List.of(interventionId))).thenReturn(List.of(hydrated));
+        when(interventionMapper.toResponseList(List.of(hydrated))).thenReturn(List.of(response));
 
         var result = useCase.execute(failureId, pageable);
 
@@ -50,6 +53,8 @@ class FindInterventionsByFailureUseCaseTest {
         assertEquals(1, result.totalPages());
         assertEquals(0, result.page());
         assertEquals(20, result.size());
+        verify(interventionRepository).findByFailureId(failureId, pageable);
+        verify(interventionRepository).findAllByIdWithDetails(List.of(interventionId));
     }
 
     @Test
@@ -58,12 +63,13 @@ class FindInterventionsByFailureUseCaseTest {
         PageRequest pageable = PageRequest.of(0, 20);
         Page<Intervention> page = Page.empty(pageable);
 
-        when(interventionRepository.findByFailureIdWithDocuments(failureId, pageable)).thenReturn(page);
+        when(interventionRepository.findByFailureId(failureId, pageable)).thenReturn(page);
         when(interventionMapper.toResponseList(List.of())).thenReturn(List.of());
 
         var result = useCase.execute(failureId, pageable);
 
         assertTrue(result.content().isEmpty());
         assertEquals(0L, result.totalElements());
+        verify(interventionRepository, never()).findAllByIdWithDetails(any());
     }
 }

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { cardVariants } from '@/features/ai-assistant/animations';
+import { cardVariants } from '@/design-system/animations';
 import { DashboardPanel } from './DashboardPanel';
 
 const actions = [

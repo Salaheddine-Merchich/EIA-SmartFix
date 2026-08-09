@@ -3,7 +3,7 @@ package com.ocp.eia.modules.maintenance.application;
 import com.ocp.eia.domain.model.InterventionDocument;
 import com.ocp.eia.domain.repository.InterventionDocumentRepository;
 import com.ocp.eia.modules.maintenance.domain.port.DocumentStoragePort;
-import com.ocp.eia.presentation.exception.ResourceNotFoundException;
+import com.ocp.eia.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;

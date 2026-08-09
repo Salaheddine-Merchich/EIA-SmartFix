@@ -103,6 +103,23 @@ export const interventionsApi = {
   },
   deleteDocument: (interventionId: string, documentId: string) =>
     api.delete(`/api/v1/interventions/${interventionId}/documents/${documentId}`),
+  exportPdf: async (interventionId: string) => {
+    const response = await api.get(`/api/v1/interventions/${interventionId}/export/pdf`, {
+      responseType: 'blob',
+    });
+    const contentDisposition = response.headers['content-disposition'] as string | undefined;
+    const filename = contentDisposition?.includes('filename="')
+      ? contentDisposition.split('filename="')[1]?.slice(0, -1)
+      : `intervention-${interventionId}.pdf`;
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename || `intervention-${interventionId}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
 };
 
 export interface SearchResponse {

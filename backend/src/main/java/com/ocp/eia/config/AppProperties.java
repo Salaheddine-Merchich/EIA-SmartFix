@@ -74,7 +74,7 @@ public class AppProperties {
             @Setter
             public static class Performance {
                 private String embeddingTimeout = "5s";
-                private String llmTimeout = "10s";
+                private String llmTimeout = "180s";
                 private int circuitBreakerThreshold = 5;
                 private String circuitBreakerTimeout = "30s";
                 private int threadPoolCoreSize = 2;

@@ -6,7 +6,7 @@ import com.ocp.eia.domain.model.Role;
 import com.ocp.eia.domain.model.User;
 import com.ocp.eia.infrastructure.security.CustomUserDetailsService;
 import com.ocp.eia.infrastructure.security.JwtService;
-import com.ocp.eia.presentation.exception.BadRequestException;
+import com.ocp.eia.shared.exception.BadRequestException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

@@ -24,6 +24,7 @@
 ```
 presentation → application → domain
 infrastructure → implémente les ports
+application → shared.exception (pas presentation.exception)
 maintenance.domain ↛ knowledge (découplage par événements)
 knowledge.domain ↛ spring.ai
 ```

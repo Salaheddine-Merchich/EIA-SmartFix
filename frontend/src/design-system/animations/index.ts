@@ -26,3 +26,19 @@ export const staggerContainer = {
 export const cardHover = {
   whileHover: { y: -1, transition: { type: 'spring' as const, stiffness: 400, damping: 30 } },
 };
+
+export const cardVariants = {
+  initial: { opacity: 0, y: 12, scale: 0.96 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { type: 'spring' as const, stiffness: 280, damping: 26 },
+  },
+  hover: {
+    y: -2,
+    scale: 1.01,
+    transition: { type: 'spring' as const, stiffness: 400, damping: 25 },
+  },
+  tap: { scale: 0.98 },
+};

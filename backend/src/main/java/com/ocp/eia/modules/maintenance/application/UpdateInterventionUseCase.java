@@ -8,7 +8,7 @@ import com.ocp.eia.domain.model.User;
 import com.ocp.eia.domain.repository.InterventionRepository;
 import com.ocp.eia.infrastructure.security.SecurityUtils;
 import com.ocp.eia.modules.maintenance.domain.service.InterventionWorkflow;
-import com.ocp.eia.presentation.exception.ResourceNotFoundException;
+import com.ocp.eia.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -5,7 +5,7 @@ import com.ocp.eia.application.dto.EquipmentDto.EquipmentResponse;
 import com.ocp.eia.application.mapper.EquipmentMapper;
 import com.ocp.eia.domain.model.Equipment;
 import com.ocp.eia.domain.repository.EquipmentRepository;
-import com.ocp.eia.presentation.exception.ConflictException;
+import com.ocp.eia.shared.exception.ConflictException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

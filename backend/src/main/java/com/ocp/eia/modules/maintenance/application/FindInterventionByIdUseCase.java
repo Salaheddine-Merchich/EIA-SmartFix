@@ -3,7 +3,7 @@ package com.ocp.eia.modules.maintenance.application;
 import com.ocp.eia.application.dto.InterventionDto.InterventionResponse;
 import com.ocp.eia.application.mapper.InterventionMapper;
 import com.ocp.eia.domain.repository.InterventionRepository;
-import com.ocp.eia.presentation.exception.ResourceNotFoundException;
+import com.ocp.eia.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

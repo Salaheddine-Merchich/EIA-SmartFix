@@ -5,7 +5,7 @@ import com.ocp.eia.domain.model.Intervention;
 import com.ocp.eia.domain.repository.EquipmentRepository;
 import com.ocp.eia.domain.repository.InterventionRepository;
 import com.ocp.eia.modules.maintenance.infrastructure.pdf.InterventionPdfGenerator;
-import com.ocp.eia.presentation.exception.ResourceNotFoundException;
+import com.ocp.eia.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

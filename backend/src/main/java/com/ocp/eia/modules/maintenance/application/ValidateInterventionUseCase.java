@@ -11,7 +11,7 @@ import com.ocp.eia.modules.maintenance.application.event.InterventionKnowledgePa
 import com.ocp.eia.modules.maintenance.application.event.InterventionKnowledgeRemovedEvent;
 import com.ocp.eia.modules.maintenance.application.event.InterventionValidatedEvent;
 import com.ocp.eia.modules.maintenance.domain.service.InterventionWorkflow;
-import com.ocp.eia.presentation.exception.ResourceNotFoundException;
+import com.ocp.eia.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;

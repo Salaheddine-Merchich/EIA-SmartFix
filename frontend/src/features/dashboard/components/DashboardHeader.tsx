@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EnterpriseButton } from '@/design-system';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { fadeInUp } from '@/features/ai-assistant/animations';
+import { fadeInUp } from '@/design-system/animations';
 import { formatDateTime, formatTime, greetingName } from '../utils/formatters';
 
 export function DashboardHeader() {

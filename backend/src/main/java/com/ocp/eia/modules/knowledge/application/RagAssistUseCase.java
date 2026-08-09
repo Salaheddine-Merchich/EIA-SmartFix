@@ -3,10 +3,8 @@ package com.ocp.eia.modules.knowledge.application;
 import com.ocp.eia.application.dto.AiDto.AiAssistRequest;
 import com.ocp.eia.application.dto.AiDto.AiAssistResponse;
 import com.ocp.eia.application.dto.AiDto.AiSuggestions;
-import com.ocp.eia.application.dto.AiDto.SimilarInterventionDto;
 import com.ocp.eia.modules.knowledge.application.RagRetrievalService.RetrievalOutcome;
 import com.ocp.eia.modules.knowledge.domain.model.AiDiagnosticTrace;
-import com.ocp.eia.modules.knowledge.domain.model.RetrievedDocument;
 import com.ocp.eia.modules.knowledge.domain.model.SimilarIntervention;
 import com.ocp.eia.modules.knowledge.domain.model.SimilarKnowledgeDocument;
 import com.ocp.eia.modules.knowledge.domain.port.LlmProviderPort;
@@ -27,9 +25,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 public class RagAssistUseCase {
-
-    private static final String DISCLAIMER =
-            "Assistance uniquement — les décisions finales restent celles du technicien ou de l'ingénieur.";
 
     private static final String UNAVAILABLE_CAUSE =
             "L'assistance IA est temporairement indisponible";
@@ -81,19 +76,8 @@ public class RagAssistUseCase {
             List<SimilarIntervention> relevant = outcome.relevant();
             List<SimilarKnowledgeDocument> knowledgeResults = outcome.knowledgeDocuments();
 
-            List<SimilarInterventionDto> similarDtos = relevant.stream()
-                    .map(s -> new SimilarInterventionDto(
-                            s.interventionId(),
-                            s.equipmentCode(),
-                            s.symptomes(),
-                            s.causeRacine(),
-                            s.actionsCorrectives(),
-                            s.similarity()
-                    ))
-                    .toList();
-
             SuggestionResult suggestionResult = generateSuggestions(request.description(), relevant, knowledgeResults);
-            AiDiagnosticTrace trace = buildTrace(
+            AiDiagnosticTrace trace = AiDiagnosticTraceFactory.buildTrace(
                     request.description(),
                     relevant,
                     outcome.vectorCount(),
@@ -106,11 +90,10 @@ public class RagAssistUseCase {
             );
             diagnosticStatsService.record(trace);
 
-            AiAssistResponse response = new AiAssistResponse(
-                    similarDtos,
+            AiAssistResponse response = AiDiagnosticTraceFactory.toResponse(
+                    relevant,
                     suggestionResult.suggestions(),
-                    DISCLAIMER,
-                    AiDiagnosticTraceMapper.toDto(trace)
+                    trace
             );
 
             log.info(
@@ -145,23 +128,20 @@ public class RagAssistUseCase {
             long retrievalDurationMs,
             String embeddingStatus
     ) {
-        AiDiagnosticTrace trace = new AiDiagnosticTrace(
+        AiDiagnosticTrace trace = AiDiagnosticTraceFactory.buildTrace(
                 query,
                 List.of(),
                 0,
                 0,
                 0,
-                0,
-                0.0,
-                0.0,
-                retrievalDurationMs,
-                0L,
                 embeddingStatus,
-                hybridEnabled
+                hybridEnabled,
+                retrievalDurationMs,
+                0L
         );
         ragObservabilityService.recordFallbackResponse();
 
-        return new AiAssistResponse(
+        return AiDiagnosticTraceFactory.toResponse(
                 List.of(),
                 new AiSuggestions(
                         List.of(UNAVAILABLE_CAUSE),
@@ -169,50 +149,7 @@ public class RagAssistUseCase {
                         UNAVAILABLE_SUMMARY,
                         UNAVAILABLE_ADVICE
                 ),
-                DISCLAIMER,
-                AiDiagnosticTraceMapper.toDto(trace)
-        );
-    }
-
-    private AiDiagnosticTrace buildTrace(
-            String query,
-            List<SimilarIntervention> relevant,
-            int vectorCount,
-            int textCount,
-            int mergedCount,
-            String embeddingStatus,
-            boolean hybridEnabled,
-            long retrievalDurationMs,
-            long llmDurationMs
-    ) {
-        List<RetrievedDocument> documents = relevant.stream()
-                .map(s -> new RetrievedDocument(
-                        s.interventionId(),
-                        s.equipmentCode(),
-                        s.symptomes(),
-                        s.causeRacine(),
-                        s.similarity()
-                ))
-                .toList();
-
-        double averageSimilarity = relevant.isEmpty()
-                ? 0.0
-                : relevant.stream().mapToDouble(SimilarIntervention::similarity).average().orElse(0.0);
-        double confidenceScore = ConfidenceCalculator.compute(averageSimilarity, relevant.size());
-
-        return new AiDiagnosticTrace(
-                query,
-                documents,
-                vectorCount,
-                textCount,
-                mergedCount,
-                relevant.size(),
-                averageSimilarity,
-                confidenceScore,
-                retrievalDurationMs,
-                llmDurationMs,
-                embeddingStatus,
-                hybridEnabled
+                trace
         );
     }
 

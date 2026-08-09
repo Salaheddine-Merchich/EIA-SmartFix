@@ -1,7 +1,7 @@
 package com.ocp.eia.infrastructure.storage;
 
 import com.ocp.eia.config.AppProperties;
-import com.ocp.eia.presentation.exception.BadRequestException;
+import com.ocp.eia.shared.exception.BadRequestException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

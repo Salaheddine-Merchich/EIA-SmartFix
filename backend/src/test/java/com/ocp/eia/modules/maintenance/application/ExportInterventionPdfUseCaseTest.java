@@ -4,7 +4,7 @@ import com.ocp.eia.domain.model.*;
 import com.ocp.eia.domain.repository.EquipmentRepository;
 import com.ocp.eia.domain.repository.InterventionRepository;
 import com.ocp.eia.modules.maintenance.infrastructure.pdf.InterventionPdfGenerator;
-import com.ocp.eia.presentation.exception.ResourceNotFoundException;
+import com.ocp.eia.shared.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

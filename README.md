@@ -39,9 +39,11 @@ Monolithe Spring Boot en couches :
 | `ai` | `application-ai.yml` | Config Ollama / RAG (modèles, timeouts, top-k) |
 | `prod` | `application-prod.yml` | Datasource, JWT, CORS et chemins **obligatoires via variables d'environnement** ; Swagger désactivé |
 
-En local : `dev` (ou `dev,ai`). En Docker Compose : `SPRING_PROFILES_ACTIVE=dev,ai` par défaut.
+En local : `dev` (ou `dev,ai`). En Docker Compose : `SPRING_PROFILES_ACTIVE=dev` et `KNOWLEDGE_ENABLED=false` par défaut ; activer le RAG avec `--profile ai` + `SPRING_PROFILES_ACTIVE=dev,ai` et `KNOWLEDGE_ENABLED=true`.
 
-Secrets et config sensible (JWT, mots de passe DB, CORS prod, etc.) viennent de l'environnement — voir `.env.example`. Ne pas committer de `.env` réel.
+Secrets et config sensible (JWT, mots de passe DB, CORS prod, etc.) viennent de l'environnement — voir `.env.example` et [docs/SECURITY.md](docs/SECURITY.md). Ne pas committer de `.env` réel. Compose **exige** `POSTGRES_PASSWORD` et `JWT_SECRET` dans `.env`.
+
+Checklist livraison / démo : [docs/PRODUCTION_CHECKLIST.md](docs/PRODUCTION_CHECKLIST.md).
 
 ## Démarrage rapide
 
@@ -65,9 +67,11 @@ docker compose up -d backend frontend
 docker compose --profile ai up -d ollama
 docker exec eia-ollama ollama pull nomic-embed-text
 docker exec eia-ollama ollama pull llama3.2
-# Redémarrer le backend si besoin (profils Spring : SPRING_PROFILES_ACTIVE=dev,ai)
+# Activer le RAG côté backend :
+# SPRING_PROFILES_ACTIVE=dev,ai KNOWLEDGE_ENABLED=true dans .env, puis :
 docker compose up -d backend
 ```
+
 
 | Service | URL |
 |---------|-----|

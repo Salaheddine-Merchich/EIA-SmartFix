@@ -43,28 +43,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const existingAccessToken = localStorage.getItem('accessToken');
-      if (existingAccessToken) {
-        if (!cancelled) {
-          setUser(storedUser);
-          setAccessToken(existingAccessToken);
-          setIsBootstrapping(false);
-        }
-        return;
-      }
-
+      // Always validate/refresh on bootstrap — do not trust a stored access token alone.
       const token = await refreshAccessToken();
       if (cancelled || loginInProgressRef.current) return;
 
       if (!token) {
+        // Concurrent login may have replaced tokens while refresh was in flight.
+        const recoveredRefresh = localStorage.getItem('refreshToken');
         const recoveredToken = localStorage.getItem('accessToken');
-        if (!recoveredToken) {
+        if (recoveredToken && recoveredRefresh && recoveredRefresh !== refreshToken) {
+          setUser(readStoredUser());
+          setAccessToken(recoveredToken);
+        } else {
           clearAuthSession();
           setUser(null);
           setAccessToken(null);
-        } else {
-          setUser(readStoredUser());
-          setAccessToken(recoveredToken);
         }
       } else {
         setUser(readStoredUser());

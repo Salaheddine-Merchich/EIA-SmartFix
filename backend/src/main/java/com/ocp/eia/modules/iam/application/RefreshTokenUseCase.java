@@ -5,7 +5,7 @@ import com.ocp.eia.application.dto.AuthDto.RefreshTokenRequest;
 import com.ocp.eia.domain.model.User;
 import com.ocp.eia.infrastructure.security.CustomUserDetailsService;
 import com.ocp.eia.infrastructure.security.JwtService;
-import com.ocp.eia.presentation.exception.BadRequestException;
+import com.ocp.eia.shared.exception.BadRequestException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;

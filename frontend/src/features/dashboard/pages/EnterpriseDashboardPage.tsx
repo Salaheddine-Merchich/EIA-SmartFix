@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { fadeInUp } from '@/features/ai-assistant/animations';
+import { fadeInUp } from '@/design-system/animations';
 import { AnalyticsSection } from '../charts/AnalyticsSection';
 import { RecurringDefectsPanel } from '../components/RecurringDefectsPanel';
 import { AlertsPanel } from '../components/AlertsPanel';

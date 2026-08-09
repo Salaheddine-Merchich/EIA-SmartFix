@@ -3,6 +3,7 @@ WORKDIR /app
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 COPY src ./src
+# Image build skips tests for speed; run `mvn verify` in CI before publishing images.
 RUN mvn package -DskipTests -B
 
 FROM eclipse-temurin:21-jre-alpine

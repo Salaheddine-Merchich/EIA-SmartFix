@@ -5,7 +5,7 @@ import com.ocp.eia.application.mapper.EquipmentMapper;
 import com.ocp.eia.domain.model.Equipment;
 import com.ocp.eia.domain.repository.EquipmentRepository;
 import com.ocp.eia.domain.repository.FailureRepository;
-import com.ocp.eia.presentation.exception.ResourceNotFoundException;
+import com.ocp.eia.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

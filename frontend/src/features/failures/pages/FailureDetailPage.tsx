@@ -18,6 +18,7 @@ import {
   useEnterpriseConfirm,
 } from '@/design-system';
 import { useMutationFeedback } from '@/shared/hooks/useMutationFeedback';
+import { interventionsApi } from '@/shared/api';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import type { StatutPanne } from '@/shared/types';
 import { FailureSummaryPanel } from '../components/FailureSummaryPanel';
@@ -178,40 +179,10 @@ export default function FailureDetailPage() {
   };
 
   const handleExportPdf = async (interventionId: string) => {
-    try {
-      const response = await fetch(`/api/v1/interventions/${interventionId}/export/pdf`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de l\'export PDF');
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const contentDisposition = response.headers.get('content-disposition');
-      const filename = contentDisposition
-        ? contentDisposition.split('filename="')[1]?.slice(0, -1)
-        : `intervention-${interventionId}.pdf`;
-
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = filename;
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      URL.revokeObjectURL(url);
-
-      await execute(() => Promise.resolve(true), {
-        successMessage: 'PDF exporté avec succès',
-      });
-    } catch (error) {
-      await execute(() => Promise.reject(error), {
-        errorMessage: 'Erreur lors de l\'export PDF',
-      });
-    }
+    await execute(() => interventionsApi.exportPdf(interventionId), {
+      successMessage: 'PDF exporté avec succès',
+      errorMessage: 'Erreur lors de l\'export PDF',
+    });
   };
 
   if (isLoading) {

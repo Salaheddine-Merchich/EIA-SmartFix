@@ -74,18 +74,8 @@ public class PgInterventionTextSearchAdapter implements InterventionTextSearchPo
         params.add(likePattern);
         params.add(likePattern);
         params.add(likePattern);
-        
-        // Ajouter filtres contextuels
-        if (context.equipmentId() != null) {
-            queryBuilder.append(" AND e.id = ?");
-            params.add(context.equipmentId());
-        } else if (context.equipmentFamily() != null) {
-            queryBuilder.append(" AND LOWER(e.famille) = LOWER(?)");
-            params.add(context.equipmentFamily());
-        } else if (context.equipmentZone() != null) {
-            queryBuilder.append(" AND LOWER(e.zone) = LOWER(?)");
-            params.add(context.equipmentZone());
-        }
+
+        // Soft filter: no hard equipment/family/zone WHERE — boost matching rows in Java below
         
         queryBuilder.append(" ORDER BY base_similarity DESC LIMIT ?");
         params.add(topK);

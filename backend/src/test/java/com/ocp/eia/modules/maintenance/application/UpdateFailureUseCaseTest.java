@@ -7,7 +7,7 @@ import com.ocp.eia.domain.model.*;
 import com.ocp.eia.domain.repository.EquipmentRepository;
 import com.ocp.eia.domain.repository.FailureRepository;
 import com.ocp.eia.domain.repository.UserRepository;
-import com.ocp.eia.presentation.exception.ResourceNotFoundException;
+import com.ocp.eia.shared.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

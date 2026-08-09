@@ -10,7 +10,8 @@ spring:
 
 app:
   knowledge:
-    enabled: true
+    # Compose sets KNOWLEDGE_ENABLED=false unless --profile ai; local Maven defaults to on
+    enabled: ${KNOWLEDGE_ENABLED:true}
     provider: ollama
   cors:
     allowed-origins:

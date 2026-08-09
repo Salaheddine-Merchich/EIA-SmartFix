@@ -17,7 +17,7 @@ spring:
 
 app:
   knowledge:
-    enabled: true
+    enabled: ${KNOWLEDGE_ENABLED:true}
     provider: ollama
   ai:
     rag:

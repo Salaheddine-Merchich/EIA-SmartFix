@@ -1,5 +1,6 @@
 import api, { clearAuthSession, createApiError, refreshAccessToken } from './client';
 import { getApiBaseUrl } from './baseUrl';
+import { connectSse } from './sseFetch';
 import type {
   AuthResponse,
   AiAssistResponse,
@@ -175,8 +176,6 @@ export function buildAssistStreamUrl(description: string, options: AiAssistOptio
   if (failureId) params.append('failureId', failureId);
   if (equipmentId) params.append('equipmentId', equipmentId);
   params.append('topK', topK.toString());
-  const token = localStorage.getItem('accessToken');
-  if (token) params.append('access_token', token);
   return `${getApiBaseUrl()}/api/v1/ai/assist/stream?${params.toString()}`;
 }
 
@@ -194,73 +193,16 @@ export const aiApi = {
   
   assistStream: (description: string, options: AiAssistOptions = {}) => {
     return new Promise<AiAssistResponse>((resolve, reject) => {
-      let tokens: string[] = [];
+      const tokens: string[] = [];
       let completed = false;
       let sawErrorEvent = false;
-
-      const eventSource = new EventSource(buildAssistStreamUrl(description, options));
+      const controller = new AbortController();
 
       const finish = (fn: () => void) => {
         if (completed) return;
         completed = true;
-        eventSource.close();
+        controller.abort();
         fn();
-      };
-
-      eventSource.addEventListener('status', (event: MessageEvent) => {
-        options.onStatus?.(event.data);
-      });
-
-      eventSource.addEventListener('context', (event: MessageEvent) => {
-        options.onContext?.(event.data);
-      });
-
-      eventSource.addEventListener('fallback', (event: MessageEvent) => {
-        options.onStatus?.(event.data);
-      });
-
-      eventSource.addEventListener('token', (event: MessageEvent) => {
-        tokens.push(event.data);
-        options.onToken?.(event.data, tokens.join(''));
-      });
-
-      eventSource.addEventListener('complete', (event: MessageEvent) => {
-        try {
-          const parsed = JSON.parse(event.data) as AiAssistResponse | AiAssistResponse['suggestions'];
-          const response: AiAssistResponse =
-            'suggestions' in parsed && parsed.suggestions
-              ? parsed
-              : {
-                  similarInterventions: [],
-                  suggestions: parsed as AiAssistResponse['suggestions'],
-                  disclaimer:
-                    "Assistance uniquement — les décisions finales restent celles du technicien ou de l'ingénieur.",
-                  diagnosticTrace: null,
-                };
-          finish(() => resolve(response));
-        } catch {
-          finish(() => reject(new Error('Failed to parse complete response')));
-        }
-      });
-
-      eventSource.addEventListener('error', (event: MessageEvent) => {
-        sawErrorEvent = true;
-        if (event.data) {
-          options.onStatus?.(event.data);
-        }
-      });
-
-      eventSource.onerror = () => {
-        if (completed) return;
-        finish(() =>
-          reject(
-            new Error(
-              sawErrorEvent || tokens.length > 0
-                ? 'Stream ended before complete response'
-                : 'EventSource connection failed',
-            ),
-          ),
-        );
       };
 
       if (options.signal) {
@@ -268,6 +210,63 @@ export const aiApi = {
           finish(() => reject(new Error('Request was aborted')));
         });
       }
+
+      void connectSse(
+        buildAssistStreamUrl(description, options),
+        {
+          onEvent: (event, data) => {
+            if (event === 'status' || event === 'fallback') {
+              options.onStatus?.(data);
+              return;
+            }
+            if (event === 'context') {
+              options.onContext?.(data);
+              return;
+            }
+            if (event === 'token') {
+              tokens.push(data);
+              options.onToken?.(data, tokens.join(''));
+              return;
+            }
+            if (event === 'error') {
+              sawErrorEvent = true;
+              if (data) options.onStatus?.(data);
+              return;
+            }
+            if (event === 'complete') {
+              try {
+                const parsed = JSON.parse(data) as AiAssistResponse | AiAssistResponse['suggestions'];
+                const response: AiAssistResponse =
+                  'suggestions' in parsed && parsed.suggestions
+                    ? parsed
+                    : {
+                        similarInterventions: [],
+                        suggestions: parsed as AiAssistResponse['suggestions'],
+                        disclaimer:
+                          "Assistance uniquement — les décisions finales restent celles du technicien ou de l'ingénieur.",
+                        diagnosticTrace: null,
+                      };
+                finish(() => resolve(response));
+              } catch {
+                finish(() => reject(new Error('Failed to parse complete response')));
+              }
+            }
+          },
+          onError: () => {
+            if (completed) return;
+            finish(() =>
+              reject(
+                new Error(
+                  sawErrorEvent || tokens.length > 0
+                    ? 'Stream ended before complete response'
+                    : 'SSE connection failed',
+                ),
+              ),
+            );
+          },
+        },
+        { signal: controller.signal },
+      );
     });
   },
 };

@@ -31,6 +31,8 @@ knowledge.domain ↛ spring.ai
 
 Vérifié par `ArchitectureTest` (ArchUnit).
 
+Indexes : `idx_interventions_fts` (V3) retiré en V19 — FTS interventions via `search_vector` (V16). Listes panne/équipement utilisent `ILIKE` pour les trigram V18 ; FTS knowledge aligne `to_tsvector(title) || to_tsvector(content)` sur les GIN V12.
+
 ## Module Knowledge (ports)
 
 | Port | Implémentation actuelle | Futures |
@@ -54,9 +56,13 @@ Règles dans `InterventionWorkflow` (domaine pur, testé unitairement).
 
 À la validation → `InterventionValidatedEvent` → indexation RAG async **après commit** (`@TransactionalEventListener(AFTER_COMMIT)`).
 
+Mise à jour d’une panne / d’un équipement dont des champs entrent dans le payload indexé → `InterventionKnowledgeChangedEvent` pour chaque intervention encore `VALIDEE` liée → ré-embed async après commit (les interventions `VALIDEE` restent immuables côté corps d’intervention).
+
 Rejet ou suppression → `InterventionKnowledgeRemovedEvent` → désindexation pgvector.
 
-Contenu indexé : symptômes, cause racine, analyse, actions correctives, pièces, description (pas les fichiers documents).
+Contenu indexé : symptômes, cause racine, analyse, actions correctives, pièces, description, plus métadonnées panne/équipement (pas les fichiers documents).
+
+Documents knowledge techniques : pas d’API CRUD de mise à jour — indexation via admin (`POST /api/v1/admin/knowledge/reindex-documents`) ou reindex démarrage `dev`. Le trigger Flyway V15 (`RAISE NOTICE`) reste un no-op applicatif.
 
 ## Ports & commandes (rappel)
 

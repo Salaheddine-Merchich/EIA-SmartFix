@@ -1,8 +1,10 @@
 package com.ocp.eia.modules.knowledge.application;
 
+import com.ocp.eia.modules.maintenance.application.event.InterventionKnowledgeChangedEvent;
 import com.ocp.eia.modules.maintenance.application.event.InterventionKnowledgePayload;
 import com.ocp.eia.modules.maintenance.application.event.InterventionKnowledgeRemovedEvent;
 import com.ocp.eia.modules.maintenance.application.event.InterventionValidatedEvent;
+import com.ocp.eia.modules.monitoring.application.event.RagIndexCompletedEvent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -37,6 +39,21 @@ class InterventionKnowledgeListenerTest {
 
         verify(indexInterventionUseCase).index(payload);
         verify(eventPublisher).publishEvent(any(Object.class));
+    }
+
+    @Test
+    void onInterventionKnowledgeChanged_reindexesAsUpdated() {
+        UUID id = UUID.randomUUID();
+        InterventionKnowledgePayload payload = new InterventionKnowledgePayload(
+                id, "Symptôme", "Cause", null, "Action", null, "Desc",
+                null, null, null, null, null, null, null, "EQ-1", null, null, null, null
+        );
+        when(indexInterventionUseCase.index(payload)).thenReturn(IndexInterventionUseCase.IndexOutcome.INDEXED);
+
+        listener.onInterventionKnowledgeChanged(new InterventionKnowledgeChangedEvent(payload));
+
+        verify(indexInterventionUseCase).index(payload);
+        verify(eventPublisher).publishEvent(any(RagIndexCompletedEvent.class));
     }
 
     @Test

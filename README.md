@@ -57,7 +57,9 @@ Checklist livraison / démo : [docs/PRODUCTION_CHECKLIST.md](docs/PRODUCTION_CHE
 
 ```bash
 cp .env.example .env
-# Ajuster POSTGRES_PASSWORD, JWT_SECRET, etc. dans .env
+# Renseigner POSTGRES_PASSWORD, JWT_SECRET, SPRING_DATASOURCE_PASSWORD
+# Ne PAS définir SPRING_DATASOURCE_URL ni OLLAMA_BASE_URL pour Compose
+# (défauts : postgres:5432 et ollama:11434 dans le réseau Docker).
 
 docker compose up -d postgres
 # Attendre le healthcheck PostgreSQL, puis :
@@ -67,10 +69,12 @@ docker compose up -d backend frontend
 docker compose --profile ai up -d ollama
 docker exec eia-ollama ollama pull nomic-embed-text
 docker exec eia-ollama ollama pull llama3.2
-# Activer le RAG côté backend :
-# SPRING_PROFILES_ACTIVE=dev,ai KNOWLEDGE_ENABLED=true dans .env, puis :
+# Dans .env : SPRING_PROFILES_ACTIVE=dev,ai  KNOWLEDGE_ENABLED=true
+# optionnel : OLLAMA_BASE_URL=http://ollama:11434
 docker compose up -d backend
 ```
+
+Checklist smoke démo : [docs/PRODUCTION_CHECKLIST.md](docs/PRODUCTION_CHECKLIST.md#smoke-démo-ocp-10-min).
 
 
 | Service | URL |
@@ -87,16 +91,17 @@ docker compose up -d backend
 # PostgreSQL (port hôte 15432)
 docker compose up -d postgres
 
-# Backend — profils Spring "dev" (importe la config AI) :
+# Backend — définir SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:15432/eia_smartfix
+# (et password aligné sur Postgres). Profils : dev ; RAG : KNOWLEDGE_ENABLED=true + Ollama local.
 cd backend
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
-# Variante explicite : -Dspring-boot.run.profiles=dev,ai
 
 # Frontend — Vite sur http://localhost:3000 (proxy /api → :8080)
 cd frontend
 npm install
 npm run dev
 ```
+
 
 ### CORS
 

@@ -24,10 +24,10 @@ public interface FailureRepository extends JpaRepository<Failure, UUID> {
             WHERE (:equipmentId IS NULL OR e.id = :equipmentId)
             AND (:statut IS NULL OR f.statut = :statut)
             AND (:criticite IS NULL OR f.criticite = :criticite)
-            AND (:codeDefaut IS NULL OR :codeDefaut = '' OR LOWER(f.codeDefaut) LIKE LOWER(CONCAT('%', :codeDefaut, '%')))
+            AND (:codeDefaut IS NULL OR :codeDefaut = '' OR f.codeDefaut ILIKE CONCAT('%', :codeDefaut, '%'))
             AND (:search IS NULL OR :search = '' OR
-                 LOWER(f.descriptionInitiale) LIKE LOWER(CONCAT('%', :search, '%')) OR
-                 LOWER(f.codeDefaut) LIKE LOWER(CONCAT('%', :search, '%')))
+                 f.descriptionInitiale ILIKE CONCAT('%', :search, '%') OR
+                 f.codeDefaut ILIKE CONCAT('%', :search, '%'))
             """,
             countQuery = """
             SELECT COUNT(f) FROM Failure f
@@ -35,10 +35,10 @@ public interface FailureRepository extends JpaRepository<Failure, UUID> {
             WHERE (:equipmentId IS NULL OR e.id = :equipmentId)
             AND (:statut IS NULL OR f.statut = :statut)
             AND (:criticite IS NULL OR f.criticite = :criticite)
-            AND (:codeDefaut IS NULL OR :codeDefaut = '' OR LOWER(f.codeDefaut) LIKE LOWER(CONCAT('%', :codeDefaut, '%')))
+            AND (:codeDefaut IS NULL OR :codeDefaut = '' OR f.codeDefaut ILIKE CONCAT('%', :codeDefaut, '%'))
             AND (:search IS NULL OR :search = '' OR
-                 LOWER(f.descriptionInitiale) LIKE LOWER(CONCAT('%', :search, '%')) OR
-                 LOWER(f.codeDefaut) LIKE LOWER(CONCAT('%', :search, '%')))
+                 f.descriptionInitiale ILIKE CONCAT('%', :search, '%') OR
+                 f.codeDefaut ILIKE CONCAT('%', :search, '%'))
             """)
     Page<Failure> search(@Param("equipmentId") UUID equipmentId,
                          @Param("statut") StatutPanne statut,

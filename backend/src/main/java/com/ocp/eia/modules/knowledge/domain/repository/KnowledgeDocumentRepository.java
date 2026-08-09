@@ -24,12 +24,16 @@ public interface KnowledgeDocumentRepository extends JpaRepository<KnowledgeDocu
      * Full-text search in knowledge documents using PostgreSQL FTS
      */
     @Query(value = """
-        SELECT k.* FROM knowledge_documents k 
-        WHERE k.active = true 
+        SELECT k.* FROM knowledge_documents k
+        WHERE k.active = true
         AND (
-            to_tsvector('french', k.title || ' ' || k.content) @@ plainto_tsquery('french', :searchText)
+            (to_tsvector('french', coalesce(k.title, '')) || to_tsvector('french', coalesce(k.content, '')))
+            @@ plainto_tsquery('french', :searchText)
         )
-        ORDER BY ts_rank(to_tsvector('french', k.title || ' ' || k.content), plainto_tsquery('french', :searchText)) DESC
+        ORDER BY ts_rank(
+            to_tsvector('french', coalesce(k.title, '')) || to_tsvector('french', coalesce(k.content, '')),
+            plainto_tsquery('french', :searchText)
+        ) DESC
         LIMIT :limit
         """, nativeQuery = true)
     List<KnowledgeDocument> fullTextSearch(@Param("searchText") String searchText, @Param("limit") int limit);

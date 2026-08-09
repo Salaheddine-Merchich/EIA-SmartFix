@@ -1,28 +1,22 @@
 # Sécurité — EIA SmartFix
 
-## JWT et Server-Sent Events (dette connue)
+## JWT et Server-Sent Events
 
 Le navigateur `EventSource` ne permet pas d’envoyer un header `Authorization`.
-Pour le live monitoring et le stream assist, le frontend passe donc temporairement :
+Le frontend utilise donc `fetch` + `ReadableStream` (`shared/api/sseFetch.ts`) avec :
 
 ```
-?access_token=<jwt>
+Authorization: Bearer <jwt>
 ```
 
-Le filtre [`JwtAuthenticationFilter`](../backend/src/main/java/com/ocp/eia/infrastructure/security/JwtAuthenticationFilter.java)
-accepte ce paramètre en secours après le header Bearer.
+pour le live monitoring (`GET /api/v1/live/events`) et le stream assist
+(`GET /api/v1/ai/assist/stream`). Le paramètre query `access_token` **n’est plus accepté**
+par [`JwtAuthenticationFilter`](../backend/src/main/java/com/ocp/eia/infrastructure/security/JwtAuthenticationFilter.java).
 
-### Risques
+### Risques résiduels
 
-- Fuite possible via logs proxy, historique navigateur, referer
-- En cas de XSS, le token en `localStorage` est déjà exposé
-
-### Plan de sortie (progressif — ne pas casser SSE)
-
-1. Conserver query token pour EventSource (état actuel)
-2. Migrer les flux SSE vers `fetch` + `ReadableStream` avec header Bearer, ou cookie `httpOnly` + CSRF
-3. Retirer le support `access_token` query une fois le frontend migré
-4. Vérifier après chaque étape : feed live + assist stream
+- En cas de XSS, le token en `localStorage` reste exposé (inchangé)
+- CORS doit autoriser les origines frontend en production
 
 ## Secrets
 

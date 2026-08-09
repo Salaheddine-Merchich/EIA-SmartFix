@@ -17,9 +17,9 @@ public interface EquipmentRepository extends JpaRepository<Equipment, UUID> {
     @Query("""
             SELECT e FROM Equipment e
             WHERE (:search IS NULL OR :search = '' OR
-                   LOWER(e.code) LIKE LOWER(CONCAT('%', :search, '%')) OR
-                   LOWER(e.designation) LIKE LOWER(CONCAT('%', :search, '%')) OR
-                   LOWER(e.famille) LIKE LOWER(CONCAT('%', :search, '%')))
+                   e.code ILIKE CONCAT('%', :search, '%') OR
+                   e.designation ILIKE CONCAT('%', :search, '%') OR
+                   e.famille ILIKE CONCAT('%', :search, '%'))
             AND (:famille IS NULL OR :famille = '' OR e.famille = :famille)
             AND (:zone IS NULL OR :zone = '' OR e.zone = :zone)
             """)

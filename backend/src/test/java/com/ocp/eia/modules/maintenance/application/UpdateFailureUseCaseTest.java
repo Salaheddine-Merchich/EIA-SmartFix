@@ -28,15 +28,23 @@ class UpdateFailureUseCaseTest {
     @Mock private EquipmentRepository equipmentRepository;
     @Mock private UserRepository userRepository;
     @Mock private FailureMapper failureMapper;
+    @Mock private ValideeKnowledgeChangePublisher valideeKnowledgeChangePublisher;
 
     @InjectMocks private UpdateFailureUseCase useCase;
 
     @Test
-    void execute_updatesFailure() {
+    void execute_updatesFailure_andPublishesKnowledgeChangeWhenIndexedFieldsChange() {
         UUID id = UUID.randomUUID();
         UUID equipmentId = UUID.randomUUID();
-        Failure failure = Failure.builder().id(id).build();
         Equipment equipment = Equipment.builder().id(equipmentId).build();
+        Failure failure = Failure.builder()
+                .id(id)
+                .equipment(equipment)
+                .criticite(Criticite.FAIBLE)
+                .descriptionInitiale("Old")
+                .codeDefaut("C-01")
+                .zoneService("Zone A")
+                .build();
         FailureRequest request = new FailureRequest(
                 equipmentId, Instant.now(), Criticite.MOYENNE, "Zone B", null, StatutPanne.EN_COURS, "Updated", "C-02"
         );
@@ -50,6 +58,7 @@ class UpdateFailureUseCaseTest {
         assertSame(response, useCase.execute(id, request));
         assertEquals(StatutPanne.EN_COURS, failure.getStatut());
         assertEquals("Updated", failure.getDescriptionInitiale());
+        verify(valideeKnowledgeChangePublisher).publishForFailure(id);
     }
 
     @Test
@@ -62,5 +71,6 @@ class UpdateFailureUseCaseTest {
         );
 
         assertThrows(ResourceNotFoundException.class, () -> useCase.execute(id, request));
+        verifyNoInteractions(valideeKnowledgeChangePublisher);
     }
 }

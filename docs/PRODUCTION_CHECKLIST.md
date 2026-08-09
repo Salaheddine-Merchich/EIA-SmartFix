@@ -13,13 +13,14 @@
 - [ ] Seeds démo absents ou désactivés en prod (`DevDataInitializer` hors prod)
 - [ ] CI : `mvn verify` + `npm test` + `npm run build`
 - [ ] Monitoring health + métriques RAG
-- [ ] Plan sortie JWT query string suivi ([SECURITY.md](SECURITY.md))
+- [x] JWT SSE via Bearer (`fetch` stream) — query `access_token` retiré ([SECURITY.md](SECURITY.md))
 - [ ] Runbook incident IA (circuit breaker, fallback, Ollama down)
 
 ## Démarrage Docker minimal (sans IA)
 
 ```bash
 cp .env.example .env   # renseigner POSTGRES_PASSWORD, JWT_SECRET, SPRING_DATASOURCE_PASSWORD
+# Ne pas définir SPRING_DATASOURCE_URL / OLLAMA_BASE_URL (défauts Compose)
 docker compose up -d postgres backend frontend
 ```
 
@@ -27,7 +28,19 @@ docker compose up -d postgres backend frontend
 
 ```bash
 # .env : SPRING_PROFILES_ACTIVE=dev,ai  KNOWLEDGE_ENABLED=true
+# optionnel : OLLAMA_BASE_URL=http://ollama:11434
 docker compose --profile ai up -d
 docker exec eia-ollama ollama pull nomic-embed-text
 docker exec eia-ollama ollama pull llama3.2
 ```
+
+## Smoke démo OCP (10 min)
+
+1. `docker compose up -d postgres backend frontend` — login `admin@ocp.ma` / compte seed local
+2. Liste pannes → ouvrir une panne → interventions visibles
+3. Créer / soumettre / valider une intervention (rôle adapté) → badge/feed **live** réactif
+4. Sans AI : pas d’erreurs Ollama en boucle (`KNOWLEDGE_ENABLED=false`)
+5. Avec AI (`--profile ai` + `KNOWLEDGE_ENABLED=true`) : assist sync ou stream répond
+6. Search + dashboard recurring defects
+7. Upload document sur brouillon OK ; sur intervention **validée** → refus
+8. Export PDF intervention (token encore valide)

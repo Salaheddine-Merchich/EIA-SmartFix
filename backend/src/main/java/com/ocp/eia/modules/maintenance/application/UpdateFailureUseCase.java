@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -23,6 +24,7 @@ public class UpdateFailureUseCase {
     private final EquipmentRepository equipmentRepository;
     private final UserRepository userRepository;
     private final FailureMapper failureMapper;
+    private final ValideeKnowledgeChangePublisher valideeKnowledgeChangePublisher;
 
     public FailureResponse execute(UUID id, FailureRequest request) {
         Failure failure = failureRepository.findById(id)
@@ -37,6 +39,8 @@ public class UpdateFailureUseCase {
                     .orElseThrow(() -> new ResourceNotFoundException("Responsable introuvable: " + request.responsableId()));
         }
 
+        boolean knowledgeRelevantChanged = knowledgeRelevantFieldsChanged(failure, request, equipment);
+
         failure.setEquipment(equipment);
         failure.setDateHeure(request.dateHeure());
         failure.setCriticite(request.criticite());
@@ -48,6 +52,25 @@ public class UpdateFailureUseCase {
         failure.setDescriptionInitiale(request.descriptionInitiale());
         failure.setCodeDefaut(request.codeDefaut());
 
-        return failureMapper.toResponse(failureRepository.save(failure));
+        Failure saved = failureRepository.save(failure);
+        if (knowledgeRelevantChanged) {
+            valideeKnowledgeChangePublisher.publishForFailure(saved.getId());
+        }
+        return failureMapper.toResponse(saved);
+    }
+
+    private static boolean knowledgeRelevantFieldsChanged(
+            Failure failure,
+            FailureRequest request,
+            Equipment newEquipment
+    ) {
+        UUID previousEquipmentId = failure.getEquipment() != null ? failure.getEquipment().getId() : null;
+        String previousCriticite = failure.getCriticite() != null ? failure.getCriticite().name() : null;
+        String newCriticite = request.criticite() != null ? request.criticite().name() : null;
+        return !Objects.equals(previousEquipmentId, newEquipment.getId())
+                || !Objects.equals(failure.getDescriptionInitiale(), request.descriptionInitiale())
+                || !Objects.equals(failure.getCodeDefaut(), request.codeDefaut())
+                || !Objects.equals(previousCriticite, newCriticite)
+                || !Objects.equals(failure.getZoneService(), request.zoneService());
     }
 }

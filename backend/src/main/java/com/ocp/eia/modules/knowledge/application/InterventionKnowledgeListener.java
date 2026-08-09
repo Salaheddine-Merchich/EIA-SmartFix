@@ -1,5 +1,6 @@
 package com.ocp.eia.modules.knowledge.application;
 
+import com.ocp.eia.modules.maintenance.application.event.InterventionKnowledgeChangedEvent;
 import com.ocp.eia.modules.maintenance.application.event.InterventionKnowledgeRemovedEvent;
 import com.ocp.eia.modules.maintenance.application.event.InterventionValidatedEvent;
 import com.ocp.eia.modules.monitoring.application.event.RagIndexCompletedEvent;
@@ -28,6 +29,17 @@ public class InterventionKnowledgeListener {
         eventPublisher.publishEvent(new RagIndexCompletedEvent(
                 event.payload().interventionId(),
                 outcome.name(),
+                event.payload().equipmentCode()
+        ));
+    }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onInterventionKnowledgeChanged(InterventionKnowledgeChangedEvent event) {
+        IndexInterventionUseCase.IndexOutcome outcome = indexInterventionUseCase.index(event.payload());
+        eventPublisher.publishEvent(new RagIndexCompletedEvent(
+                event.payload().interventionId(),
+                outcome == IndexInterventionUseCase.IndexOutcome.INDEXED ? "UPDATED" : outcome.name(),
                 event.payload().equipmentCode()
         ));
     }

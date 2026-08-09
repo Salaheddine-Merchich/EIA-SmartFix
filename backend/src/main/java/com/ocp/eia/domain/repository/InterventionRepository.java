@@ -89,6 +89,22 @@ public interface InterventionRepository extends JpaRepository<Intervention, UUID
             """)
     List<Intervention> findByStatutValidationWithDetails(@Param("statut") StatutValidation statut);
 
+    @Query("""
+            SELECT i FROM Intervention i
+            JOIN FETCH i.failure f
+            JOIN FETCH f.equipment
+            WHERE f.id = :failureId AND i.statutValidation = com.ocp.eia.domain.model.StatutValidation.VALIDEE
+            """)
+    List<Intervention> findValideeByFailureIdWithDetails(@Param("failureId") UUID failureId);
+
+    @Query("""
+            SELECT i FROM Intervention i
+            JOIN FETCH i.failure f
+            JOIN FETCH f.equipment e
+            WHERE e.id = :equipmentId AND i.statutValidation = com.ocp.eia.domain.model.StatutValidation.VALIDEE
+            """)
+    List<Intervention> findValideeByEquipmentIdWithDetails(@Param("equipmentId") UUID equipmentId);
+
     @Query(value = """
             SELECT i.* FROM interventions i
             JOIN failures f ON f.id = i.failure_id

@@ -1,48 +1,64 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { buildLiveStreamUrl, connectLiveStream } from '../services/liveStreamService';
 
+function stubLocalStorage(initial: Record<string, string> = {}) {
+  const store = new Map<string, string>(Object.entries(initial));
+  vi.stubGlobal('localStorage', {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      store.set(key, value);
+    },
+    removeItem: (key: string) => {
+      store.delete(key);
+    },
+  });
+}
+
 describe('liveStreamService', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    stubLocalStorage({ accessToken: 'token' });
   });
 
-  it('buildLiveStreamUrl includes access token', () => {
-    const url = buildLiveStreamUrl('abc123');
+  it('buildLiveStreamUrl has no access_token query param', () => {
+    const url = buildLiveStreamUrl();
     expect(url).toContain('/api/v1/live/events');
-    expect(url).toContain('access_token=abc123');
+    expect(url).not.toContain('access_token');
   });
 
-  it('connectLiveStream forwards live-event payload', () => {
-    const listeners: Record<string, (event: MessageEvent) => void> = {};
-    const close = vi.fn();
+  it('connectLiveStream forwards live-event payload via fetch SSE', async () => {
+    const encoder = new TextEncoder();
+    const body = new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          encoder.encode(
+            'event: live-event\ndata: {"id":"1","type":"FAILURE_CREATED","category":"maintenance","title":"Nouvelle panne","message":"EQ-1","occurredAt":"2026-01-01T00:00:00Z","metadata":{}}\n\n',
+          ),
+        );
+        controller.close();
+      },
+    });
     vi.stubGlobal(
-      'EventSource',
-      vi.fn(() => ({
-        addEventListener: (name: string, cb: (event: MessageEvent) => void) => {
-          listeners[name] = cb;
-        },
-        close,
-        onerror: null,
-      })),
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        body,
+      }),
     );
 
     const onEvent = vi.fn();
     const disconnect = connectLiveStream('token', { onEvent });
 
-    listeners['live-event']({
-      data: JSON.stringify({
-        id: '1',
-        type: 'FAILURE_CREATED',
-        category: 'maintenance',
-        title: 'Nouvelle panne',
-        message: 'EQ-1',
-        occurredAt: new Date().toISOString(),
-        metadata: {},
+    await vi.waitFor(() => expect(onEvent).toHaveBeenCalledOnce());
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/v1/live/events'),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer token',
+        }),
       }),
-    } as MessageEvent);
-
-    expect(onEvent).toHaveBeenCalledOnce();
+    );
     disconnect();
-    expect(close).toHaveBeenCalled();
   });
 });

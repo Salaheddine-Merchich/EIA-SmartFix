@@ -71,7 +71,7 @@ export function mapAssistError(error: unknown): AssistError {
         message: 'Le flux IA s\'est interrompu avant la fin de la réponse. Réessayez.',
       };
     }
-    if (error.message === 'EventSource connection failed') {
+    if (error.message === 'EventSource connection failed' || error.message === 'SSE connection failed') {
       return {
         kind: 'connection',
         message: 'Erreur de connexion au service IA. Vérifiez que le backend et Ollama sont démarrés.',

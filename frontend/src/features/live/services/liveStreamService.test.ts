@@ -48,9 +48,11 @@ describe('liveStreamService', () => {
     );
 
     const onEvent = vi.fn();
-    const disconnect = connectLiveStream('token', { onEvent });
+    const onDisconnected = vi.fn();
+    const abort = connectLiveStream('token', { onEvent, onDisconnected });
 
     await vi.waitFor(() => expect(onEvent).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(onDisconnected).toHaveBeenCalledOnce());
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/v1/live/events'),
       expect.objectContaining({
@@ -59,6 +61,30 @@ describe('liveStreamService', () => {
         }),
       }),
     );
-    disconnect();
+    abort();
+  });
+
+  it('intentional abort does not emit onDisconnected', async () => {
+    const body = new ReadableStream({
+      start() {
+        /* keep open */
+      },
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        body,
+      }),
+    );
+
+    const onDisconnected = vi.fn();
+    const onError = vi.fn();
+    const abort = connectLiveStream('token', { onEvent: vi.fn(), onDisconnected, onError });
+    abort();
+    await new Promise((r) => setTimeout(r, 30));
+    expect(onDisconnected).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
   });
 });

@@ -19,6 +19,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PgVectorStoreAdapter implements VectorStorePort {
 
+    /** Oversample before Java equipment/family/zone boost so contextual hits outside raw top-K survive. */
+    private static final int BOOST_OVERSAMPLE_FACTOR = 5;
+
     private final JdbcTemplate jdbcTemplate;
 
     @Override
@@ -71,22 +74,24 @@ public class PgVectorStoreAdapter implements VectorStorePort {
         params.add(vectorLiteral);
 
         // Soft filter: no hard equipment/family/zone WHERE — boost matching rows in Java below
-        
+        int fetchLimit = context.hasFilters()
+                ? Math.max(topK, topK * BOOST_OVERSAMPLE_FACTOR)
+                : topK;
+
         queryBuilder.append(" ORDER BY ie.embedding <=> ?::vector LIMIT ?");
         params.add(vectorLiteral);
-        params.add(topK);
-        
+        params.add(fetchLimit);
+
         List<SimilarIntervention> results = jdbcTemplate.query(queryBuilder.toString(),
                 (rs, rowNum) -> {
                     UUID equipmentId = UUID.fromString(rs.getString("equipment_id"));
                     String family = rs.getString("equipment_family");
                     String zone = rs.getString("equipment_zone");
                     double baseSimilarity = rs.getDouble("base_similarity");
-                    
-                    // Appliquer le boost contextuel
+
                     double boost = context.calculateBoost(equipmentId, family, zone);
                     double finalSimilarity = Math.min(1.0, baseSimilarity * boost);
-                    
+
                     return new SimilarIntervention(
                             UUID.fromString(rs.getString("intervention_id")),
                             rs.getString("equipment_code"),
@@ -98,12 +103,14 @@ public class PgVectorStoreAdapter implements VectorStorePort {
                     );
                 },
                 params.toArray());
-        
-        // Re-trier par similarité finale si des boosts ont été appliqués
+
         if (context.hasFilters()) {
             results.sort((a, b) -> Double.compare(b.similarity(), a.similarity()));
+            if (results.size() > topK) {
+                return results.subList(0, topK);
+            }
         }
-        
+
         return results;
     }
 

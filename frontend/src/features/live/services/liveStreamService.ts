@@ -15,18 +15,21 @@ export function buildLiveStreamUrl(): string {
   return `${API_URL}/api/v1/live/events`;
 }
 
+/**
+ * Opens a live SSE stream. Returns an abort function (does not emit disconnect handlers).
+ * Stream end or transport error notify via onDisconnected / onError so the provider can reconnect.
+ */
 export function connectLiveStream(
   _accessToken: string,
   handlers: LiveStreamHandlers,
 ): () => void {
   const controller = new AbortController();
-  let closed = false;
+  let settled = false;
 
-  const disconnect = () => {
-    if (closed) return;
-    closed = true;
+  const abort = () => {
+    if (settled) return;
+    settled = true;
     controller.abort();
-    handlers.onDisconnected?.();
   };
 
   void connectSse(
@@ -41,21 +44,32 @@ export function connectLiveStream(
           try {
             handlers.onEvent(JSON.parse(data) as LiveEvent);
           } catch {
-            handlers.onError?.();
+            if (!settled) {
+              settled = true;
+              handlers.onError?.();
+            }
           }
         }
       },
       onError: () => {
-        if (!closed) {
+        if (!settled) {
+          settled = true;
           handlers.onError?.();
-          handlers.onDisconnected?.();
         }
       },
     },
     { signal: controller.signal },
-  ).catch(() => {
-    // onError already notified
-  });
+  )
+    .then(() => {
+      // Clean stream end (proxy idle, backend restart) — not an intentional abort.
+      if (!settled) {
+        settled = true;
+        handlers.onDisconnected?.();
+      }
+    })
+    .catch(() => {
+      // onError already notified (unless aborted)
+    });
 
-  return disconnect;
+  return abort;
 }

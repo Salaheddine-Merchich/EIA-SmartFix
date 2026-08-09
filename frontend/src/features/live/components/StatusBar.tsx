@@ -2,13 +2,14 @@ import { motion } from 'framer-motion';
 import { useLive } from '../providers/LiveProvider';
 import { LiveServiceBadge } from './LiveServiceBadge';
 import type { ServiceState } from '../types';
+import { liveStreamStatusLabel } from '../utils/connectionMessages';
 
 const LABELS: Record<string, string> = {
   backend: 'Backend',
   database: 'Database',
   ai: 'IA',
   rag: 'RAG',
-  liveStream: 'WebSocket',
+  liveStream: 'SSE',
 };
 
 function mapConnection(state: string): ServiceState {
@@ -27,7 +28,7 @@ export function StatusBar() {
         { key: 'database', state: status.database.state },
         { key: 'ai', state: status.ai.state },
         { key: 'rag', state: status.rag.state },
-        { key: 'liveStream', state: streamState === 'ONLINE' ? streamState : status.liveStream.state },
+        { key: 'liveStream', state: streamState },
       ]
     : [
         { key: 'backend', state: 'DEGRADED' as ServiceState },
@@ -59,7 +60,7 @@ export function StatusBar() {
           ))}
         </div>
         <span className="text-[10px] uppercase tracking-wider text-slate-500">
-          {statusLoading ? 'Vérification…' : connectionState === 'connected' ? 'Temps réel actif' : 'Reconnexion…'}
+          {liveStreamStatusLabel(connectionState, statusLoading)}
         </span>
       </div>
     </motion.div>

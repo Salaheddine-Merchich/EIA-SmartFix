@@ -7,14 +7,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Aggregates recurring defects in a short DB transaction ({@link RecurringDefectsUseCase}),
+ * then calls the LLM outside any transactional boundary.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@Transactional(readOnly = true)
 public class AnalyzeRecurringDefectsUseCase {
 
     private static final String DISCLAIMER =
@@ -48,16 +51,15 @@ public class AnalyzeRecurringDefectsUseCase {
         String userPrompt = buildUserPrompt(defects);
         LlmProviderPort llm = llmProvider.getIfAvailable();
         if (llm == null) {
-            return new RecurringDefectsAnalysisResponse(
-                    defects,
-                    buildFallbackAnalysis(defects),
-                    buildFallbackRecommendations(defects),
-                    DISCLAIMER
-            );
+            return frenchFallback(defects);
         }
 
         try {
             String raw = llm.complete(SYSTEM_PROMPT, userPrompt);
+            if (raw == null || raw.isBlank() || looksLikeJsonBlob(raw) || !raw.contains("ANALYSE:")) {
+                log.warn("Réponse LLM analytics inutilisable — fallback agrégé");
+                return frenchFallback(defects);
+            }
             return new RecurringDefectsAnalysisResponse(
                     defects,
                     extractSection(raw, "ANALYSE"),
@@ -66,16 +68,25 @@ public class AnalyzeRecurringDefectsUseCase {
             );
         } catch (Exception e) {
             log.warn("Analyse IA défauts récurrents indisponible: {}", e.getMessage());
-            return new RecurringDefectsAnalysisResponse(
-                    defects,
-                    buildFallbackAnalysis(defects),
-                    buildFallbackRecommendations(defects),
-                    DISCLAIMER
-            );
+            return frenchFallback(defects);
         }
     }
 
-    private String buildUserPrompt(java.util.List<RecurringDefectItem> defects) {
+    private RecurringDefectsAnalysisResponse frenchFallback(List<RecurringDefectItem> defects) {
+        return new RecurringDefectsAnalysisResponse(
+                defects,
+                buildFallbackAnalysis(defects),
+                buildFallbackRecommendations(defects),
+                DISCLAIMER
+        );
+    }
+
+    private static boolean looksLikeJsonBlob(String raw) {
+        String trimmed = raw.trim();
+        return trimmed.startsWith("{") && trimmed.contains("probableCauses");
+    }
+
+    private String buildUserPrompt(List<RecurringDefectItem> defects) {
         String table = defects.stream()
                 .map(d -> "- %s : %d occurrences, %d équipements, dernière vue %s".formatted(
                         d.codeDefaut(), d.occurrenceCount(), d.affectedEquipmentCount(), d.lastSeenMonth()))
@@ -83,13 +94,13 @@ public class AnalyzeRecurringDefectsUseCase {
         return "Voici les codes défaut récurrents agrégés :\n" + table;
     }
 
-    private String buildFallbackAnalysis(java.util.List<RecurringDefectItem> defects) {
+    private String buildFallbackAnalysis(List<RecurringDefectItem> defects) {
         RecurringDefectItem top = defects.getFirst();
         return "%d code(s) défaut se répètent. Le plus fréquent est « %s » avec %d occurrences sur %d équipement(s)."
                 .formatted(defects.size(), top.codeDefaut(), top.occurrenceCount(), top.affectedEquipmentCount());
     }
 
-    private String buildFallbackRecommendations(java.util.List<RecurringDefectItem> defects) {
+    private String buildFallbackRecommendations(List<RecurringDefectItem> defects) {
         return defects.stream()
                 .limit(3)
                 .map(d -> "• Prioriser l'analyse root cause pour le code %s (%d occurrences)".formatted(
@@ -103,7 +114,6 @@ public class AnalyzeRecurringDefectsUseCase {
             return raw.trim();
         }
         start += label.length() + 1;
-        int nextSection = raw.indexOf("\n", start);
         String rest = raw.substring(start).trim();
         if (label.equals("ANALYSE")) {
             int rec = rest.indexOf("RECOMMANDATIONS:");

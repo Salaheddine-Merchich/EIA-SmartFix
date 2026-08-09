@@ -3,15 +3,16 @@ import { EnterprisePanel } from '@/design-system';
 import { useLive } from '../providers/LiveProvider';
 import { formatRelativeLive } from '../utils/formatRelativeLive';
 import { liveEventIcon } from '../utils/eventPresentation';
+import { liveFeedEmptyMessage } from '../utils/connectionMessages';
 
 export function LiveActivityFeed() {
-  const { recentEvents } = useLive();
+  const { recentEvents, connectionState } = useLive();
 
   return (
     <EnterprisePanel title="Live Activity Feed" subtitle="Événements en temps réel">
       {recentEvents.length === 0 ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          En attente d&apos;événements — le flux SSE est connecté.
+          {liveFeedEmptyMessage(connectionState)}
         </p>
       ) : (
         <ul className="space-y-2" aria-live="polite">

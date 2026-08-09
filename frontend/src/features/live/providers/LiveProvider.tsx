@@ -124,15 +124,58 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setConnectionState('connecting');
-    const disconnect = connectLiveStream(streamToken, {
-      onEvent: handleEvent,
-      onConnected: () => setConnectionState('connected'),
-      onDisconnected: () => setConnectionState('disconnected'),
-      onError: () => setConnectionState('error'),
-    });
+    let cancelled = false;
+    let attempt = 0;
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+    let abortStream: (() => void) | undefined;
 
-    return disconnect;
+    const clearReconnect = () => {
+      if (reconnectTimer !== undefined) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = undefined;
+      }
+    };
+
+    const scheduleReconnect = () => {
+      if (cancelled) return;
+      clearReconnect();
+      const delayMs = Math.min(1000 * 2 ** attempt, 15_000);
+      attempt += 1;
+      setConnectionState('connecting');
+      reconnectTimer = setTimeout(connect, delayMs);
+    };
+
+    const connect = () => {
+      if (cancelled) return;
+      clearReconnect();
+      setConnectionState('connecting');
+      abortStream = connectLiveStream(streamToken, {
+        onEvent: handleEvent,
+        onConnected: () => {
+          if (cancelled) return;
+          attempt = 0;
+          setConnectionState('connected');
+        },
+        onDisconnected: () => {
+          if (cancelled) return;
+          setConnectionState('disconnected');
+          scheduleReconnect();
+        },
+        onError: () => {
+          if (cancelled) return;
+          setConnectionState('error');
+          scheduleReconnect();
+        },
+      });
+    };
+
+    connect();
+
+    return () => {
+      cancelled = true;
+      clearReconnect();
+      abortStream?.();
+    };
   }, [isAuthenticated, streamToken, handleEvent]);
 
   const visibleNotifications = useMemo(

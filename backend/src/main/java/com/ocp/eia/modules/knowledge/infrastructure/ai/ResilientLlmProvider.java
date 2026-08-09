@@ -1,6 +1,7 @@
 package com.ocp.eia.modules.knowledge.infrastructure.ai;
 
 import com.ocp.eia.config.AppProperties;
+import com.ocp.eia.modules.knowledge.domain.LlmUnavailableException;
 import com.ocp.eia.modules.knowledge.domain.port.LlmProviderPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,85 +29,74 @@ public class ResilientLlmProvider implements LlmProviderPort {
 
     private final OllamaLlmAdapter delegate;
     private final AppProperties appProperties;
-    
-    // Circuit breaker state
+
     private final AtomicInteger failureCount = new AtomicInteger(0);
     private final AtomicReference<LocalDateTime> lastFailureTime = new AtomicReference<>();
     private volatile CircuitBreakerState state = CircuitBreakerState.CLOSED;
-    
+
     private enum CircuitBreakerState {
-        CLOSED,    // Normal operation
-        OPEN,      // Failing fast
-        HALF_OPEN  // Testing if service recovered
+        CLOSED,
+        OPEN,
+        HALF_OPEN
     }
 
     @Override
     public String complete(String systemPrompt, String userPrompt) {
         if (isCircuitOpen()) {
-            return generateFallbackResponse();
+            throw new LlmUnavailableException("Circuit breaker LLM ouvert");
         }
-        
+
         Duration timeout = parseTimeout(appProperties.getAi().getRag().getPerformance().getLlmTimeout());
-        
+
         try {
-            CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> 
-                delegate.complete(systemPrompt, userPrompt));
+            CompletableFuture<String> future = CompletableFuture.supplyAsync(() ->
+                    delegate.complete(systemPrompt, userPrompt));
             String result = future.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
-            
+
             onSuccess();
             return result;
-            
+
         } catch (TimeoutException e) {
             log.error("Timeout LLM après {}ms", timeout.toMillis());
             onFailure();
-            return generateFallbackResponse();
-            
+            throw new LlmUnavailableException("Timeout LLM après " + timeout.toMillis() + "ms", e);
+
+        } catch (LlmUnavailableException e) {
+            throw e;
+
         } catch (Exception e) {
             log.error("Erreur LLM: {}", e.getMessage());
             onFailure();
-            return generateFallbackResponse();
+            throw new LlmUnavailableException("Erreur LLM: " + e.getMessage(), e);
         }
     }
-    
+
     @Override
     public Flux<String> stream(String systemPrompt, String userPrompt) {
         if (isCircuitOpen()) {
-            return Flux.just(generateFallbackResponse());
+            return Flux.error(new LlmUnavailableException("Circuit breaker LLM ouvert"));
         }
-        
+
         return delegate.stream(systemPrompt, userPrompt)
-            .timeout(parseTimeout(appProperties.getAi().getRag().getPerformance().getLlmTimeout()))
-            .doOnComplete(this::onSuccess)
-            .onErrorResume(error -> {
-                log.error("Erreur streaming LLM: {}", error.getMessage());
-                onFailure();
-                return Flux.just(generateFallbackResponse());
-            });
+                .timeout(parseTimeout(appProperties.getAi().getRag().getPerformance().getLlmTimeout()))
+                .doOnComplete(this::onSuccess)
+                .doOnError(error -> {
+                    log.error("Erreur streaming LLM: {}", error.getMessage());
+                    onFailure();
+                })
+                .onErrorMap(error ->
+                        error instanceof LlmUnavailableException
+                                ? error
+                                : new LlmUnavailableException("Erreur streaming LLM: " + error.getMessage(), error));
     }
-    
-    private String generateFallbackResponse() {
-        return """
-            {
-                "probableCauses": ["Service IA temporairement indisponible"],
-                "correctiveActions": [
-                    "Vérifier les connexions et l'alimentation électrique",
-                    "Consulter la documentation constructeur",
-                    "Contacter un responsable EIA si le problème persiste"
-                ],
-                "summary": "Réponse de secours - le service d'assistance IA n'est pas disponible.",
-                "advice": "Réessayer ultérieurement ou consulter les procédures manuelles."
-            }
-            """;
-    }
-    
+
     private boolean isCircuitOpen() {
-        int threshold = appProperties.getAi().getRag().getPerformance().getCircuitBreakerThreshold();
         Duration circuitTimeout = parseTimeout(appProperties.getAi().getRag().getPerformance().getCircuitBreakerTimeout());
-        
+
         if (state == CircuitBreakerState.CLOSED) {
             return false;
         }
-        
+
         if (state == CircuitBreakerState.OPEN) {
             LocalDateTime lastFailure = lastFailureTime.get();
             if (lastFailure != null && lastFailure.plus(circuitTimeout).isBefore(LocalDateTime.now())) {
@@ -116,10 +106,10 @@ public class ResilientLlmProvider implements LlmProviderPort {
             }
             return true;
         }
-        
-        return false; // HALF_OPEN: allow one request to test
+
+        return false;
     }
-    
+
     private void onSuccess() {
         if (state != CircuitBreakerState.CLOSED) {
             log.info("Circuit breaker LLM: {} → CLOSED (service recovered)", state);
@@ -127,13 +117,13 @@ public class ResilientLlmProvider implements LlmProviderPort {
         }
         failureCount.set(0);
     }
-    
+
     private void onFailure() {
         int failures = failureCount.incrementAndGet();
         lastFailureTime.set(LocalDateTime.now());
-        
+
         int threshold = appProperties.getAi().getRag().getPerformance().getCircuitBreakerThreshold();
-        
+
         if (failures >= threshold && state == CircuitBreakerState.CLOSED) {
             state = CircuitBreakerState.OPEN;
             log.warn("Circuit breaker LLM: CLOSED → OPEN (failures: {})", failures);
@@ -142,7 +132,7 @@ public class ResilientLlmProvider implements LlmProviderPort {
             log.warn("Circuit breaker LLM: HALF_OPEN → OPEN (test failed)");
         }
     }
-    
+
     private Duration parseTimeout(String timeoutStr) {
         try {
             if (timeoutStr.endsWith("s")) {
@@ -157,14 +147,11 @@ public class ResilientLlmProvider implements LlmProviderPort {
             return Duration.ofSeconds(10);
         }
     }
-    
-    /**
-     * Getters pour monitoring
-     */
+
     public CircuitBreakerState getCircuitBreakerState() {
         return state;
     }
-    
+
     public int getFailureCount() {
         return failureCount.get();
     }

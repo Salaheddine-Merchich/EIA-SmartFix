@@ -21,7 +21,7 @@ export function buildKpiCards(
       title: 'Équipements',
       value: formatNumber(equipmentCount),
       subtitle: 'Référencés',
-      hint: `${formatNumber(stats.topFailingEquipment.length)} équipements suivis en priorité`,
+      hint: 'Top 5 équipements les plus impactés',
       icon: 'equipment',
     },
     {
@@ -34,10 +34,10 @@ export function buildKpiCards(
     },
     {
       id: 'knowledge',
-      title: 'Base de connaissances',
-      value: formatNumber(stats.validatedInterventions),
-      subtitle: 'Interventions validées',
-      hint: 'Interventions validées indexables RAG',
+      title: 'Documents techniques',
+      value: formatNumber(stats.activeKnowledgeDocuments),
+      subtitle: 'Base de connaissances',
+      hint: `${formatNumber(stats.activeKnowledgeDocuments)} guides techniques + ${formatNumber(stats.indexedInterventions)} interventions indexées pour le RAG`,
       icon: 'knowledge',
     },
   ];

@@ -5,13 +5,11 @@ import {
   EnterpriseButton,
   EnterpriseCard,
   EnterpriseErrorState,
-  EnterpriseInput,
   EnterpriseModal,
   EnterprisePageHeader,
   EnterprisePageLoader,
   EnterpriseSelect,
   EnterpriseStat,
-  EnterpriseTextarea,
   criticiteVariant,
   statutPanneVariant,
   useDisclosure,
@@ -20,20 +18,17 @@ import {
 import { useMutationFeedback } from '@/shared/hooks/useMutationFeedback';
 import { interventionsApi } from '@/shared/api';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import type { StatutPanne } from '@/shared/types';
+import type { Intervention, StatutPanne } from '@/shared/types';
 import { FailureSummaryPanel } from '../components/FailureSummaryPanel';
 import { InterventionTimeline } from '../components/InterventionTimeline';
+import {
+  EMPTY_INTERVENTION_FORM,
+  InterventionFormFields,
+  interventionToForm,
+  type InterventionFormState,
+} from '../components/InterventionFormFields';
 import { ValidationModal } from '../components/ValidationModal';
 import { useFailureDetail } from '../hooks/useFailureDetail';
-
-const INTERVENTION_FIELD_LABELS: Record<string, string> = {
-  description: 'Description détaillée',
-  symptomes: 'Symptômes',
-  causeRacine: 'Cause racine',
-  analyseTechnique: 'Analyse technique',
-  actionsCorrectives: 'Actions correctives',
-  piecesRemplacees: 'Pièces remplacées',
-};
 
 const STATUT_OPTIONS: StatutPanne[] = ['OUVERTE', 'EN_COURS', 'RESOLUE', 'CLOTUREE'];
 
@@ -52,6 +47,16 @@ function formatValidationStatut(statut?: string) {
   }
 }
 
+function formToPayload(form: InterventionFormState) {
+  return {
+    ...form,
+    dureeArretMinutes: form.dureeArretMinutes ? Number(form.dureeArretMinutes) : undefined,
+    tempsInterventionMinutes: form.tempsInterventionMinutes
+      ? Number(form.tempsInterventionMinutes)
+      : undefined,
+  };
+}
+
 export default function FailureDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -60,6 +65,7 @@ export default function FailureDetailPage() {
   const { confirm } = useEnterpriseConfirm();
   const { loading, execute } = useMutationFeedback();
   const formModal = useDisclosure();
+  const editModal = useDisclosure();
   const statutModal = useDisclosure();
   const validationModal = useDisclosure();
 
@@ -76,23 +82,17 @@ export default function FailureDetailPage() {
     createIntervention,
     submitIntervention,
     validateIntervention,
+    updateIntervention,
   } = useFailureDetail(id);
 
   const [statutEdit, setStatutEdit] = useState<StatutPanne>('OUVERTE');
   const [validationTarget, setValidationTarget] = useState<{ id: string; approved: boolean } | null>(null);
-  const [form, setForm] = useState({
-    symptomes: '',
-    causeRacine: '',
-    analyseTechnique: '',
-    actionsCorrectives: '',
-    piecesRemplacees: '',
-    dureeArretMinutes: '',
-    tempsInterventionMinutes: '',
-    description: '',
-  });
+  const [editTargetId, setEditTargetId] = useState<string | null>(null);
+  const [form, setForm] = useState<InterventionFormState>(EMPTY_INTERVENTION_FORM);
 
   useEffect(() => {
     if (!failure || !id || searchParams.get('newIntervention') !== '1') return;
+    setForm(EMPTY_INTERVENTION_FORM);
     formModal.open();
     navigate(`/failures/${id}`, { replace: true });
   }, [failure, id, searchParams, navigate, formModal.open]);
@@ -100,6 +100,17 @@ export default function FailureDetailPage() {
   const openStatutModal = () => {
     if (failure) setStatutEdit(failure.statut);
     statutModal.open();
+  };
+
+  const openCreateModal = () => {
+    setForm(EMPTY_INTERVENTION_FORM);
+    formModal.open();
+  };
+
+  const openEditModal = (intervention: Intervention) => {
+    setEditTargetId(intervention.id);
+    setForm(interventionToForm(intervention));
+    editModal.open();
   };
 
   const handleUpdateStatut = async (event: FormEvent) => {
@@ -132,11 +143,7 @@ export default function FailureDetailPage() {
       () =>
         createIntervention.mutateAsync({
           failureId: id,
-          ...form,
-          dureeArretMinutes: form.dureeArretMinutes ? Number(form.dureeArretMinutes) : undefined,
-          tempsInterventionMinutes: form.tempsInterventionMinutes
-            ? Number(form.tempsInterventionMinutes)
-            : undefined,
+          ...formToPayload(form),
         }),
       {
         successMessage: 'Intervention enregistrée',
@@ -145,6 +152,25 @@ export default function FailureDetailPage() {
     );
     if (!result) return;
     formModal.close();
+  };
+
+  const handleUpdate = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!editTargetId) return;
+    const result = await execute(
+      () =>
+        updateIntervention.mutateAsync({
+          interventionId: editTargetId,
+          data: formToPayload(form),
+        }),
+      {
+        successMessage: 'Intervention mise à jour',
+        errorMessage: 'Impossible de mettre à jour l\'intervention.',
+      },
+    );
+    if (!result) return;
+    editModal.close();
+    setEditTargetId(null);
   };
 
   const openValidationModal = (interventionId: string, approved: boolean) => {
@@ -182,6 +208,53 @@ export default function FailureDetailPage() {
     await execute(() => interventionsApi.exportPdf(interventionId), {
       successMessage: 'PDF exporté avec succès',
       errorMessage: 'Erreur lors de l\'export PDF',
+    });
+  };
+
+  const handleUploadDocument = async (interventionId: string, file: File) => {
+    const result = await execute(() => interventionsApi.uploadDocument(interventionId, file), {
+      successMessage: 'Document ajouté',
+      errorMessage: 'Impossible d\'ajouter le document.',
+    });
+    if (result) void refetch();
+  };
+
+  const handleDownloadDocument = async (
+    interventionId: string,
+    documentId: string,
+    filename: string,
+  ) => {
+    await execute(() => interventionsApi.downloadDocument(interventionId, documentId, filename), {
+      successMessage: 'Téléchargement démarré',
+      errorMessage: 'Impossible de télécharger le document.',
+    });
+  };
+
+  const handleDeleteDocument = async (interventionId: string, documentId: string) => {
+    const ok = await confirm({
+      title: 'Supprimer le document',
+      message: 'Ce fichier sera définitivement supprimé.',
+      confirmLabel: 'Supprimer',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    const result = await execute(() => interventionsApi.deleteDocument(interventionId, documentId), {
+      successMessage: 'Document supprimé',
+      errorMessage: 'Impossible de supprimer le document.',
+    });
+    if (result) void refetch();
+  };
+
+  const handleDiagnoseWithAi = () => {
+    if (!failure) return;
+    navigate('/ai-assistant', {
+      state: {
+        failureId: failure.id,
+        equipmentId: failure.equipmentId,
+        prefilledDescription:
+          failure.descriptionInitiale ??
+          `Panne sur ${failure.equipmentCode} — ${failure.equipmentDesignation}`,
+      },
     });
   };
 
@@ -247,12 +320,15 @@ export default function FailureDetailPage() {
           description={failure.equipmentDesignation}
           actions={
             <div className="flex flex-wrap gap-2">
+              <EnterpriseButton variant="secondary" onClick={handleDiagnoseWithAi}>
+                Diagnostiquer avec l&apos;IA
+              </EnterpriseButton>
               {canEditStatut && (
                 <EnterpriseButton variant="secondary" onClick={openStatutModal}>
                   Modifier le statut
                 </EnterpriseButton>
               )}
-              <EnterpriseButton onClick={formModal.open}>Nouvelle intervention</EnterpriseButton>
+              <EnterpriseButton onClick={openCreateModal}>Nouvelle intervention</EnterpriseButton>
               {canDeleteFailure && (
                 <EnterpriseButton variant="danger" onClick={() => void handleDeleteFailure()}>
                   Supprimer la panne
@@ -300,7 +376,15 @@ export default function FailureDetailPage() {
             onSubmit={(interventionId) => void handleSubmitIntervention(interventionId)}
             onValidate={openValidationModal}
             onExportPdf={(interventionId) => void handleExportPdf(interventionId)}
-            onCreateIntervention={formModal.open}
+            onCreateIntervention={openCreateModal}
+            onEdit={openEditModal}
+            onUploadDocument={(interventionId, file) => void handleUploadDocument(interventionId, file)}
+            onDownloadDocument={(interventionId, documentId, filename) =>
+              void handleDownloadDocument(interventionId, documentId, filename)
+            }
+            onDeleteDocument={(interventionId, documentId) =>
+              void handleDeleteDocument(interventionId, documentId)
+            }
           />
         </div>
       </div>
@@ -354,29 +438,37 @@ export default function FailureDetailPage() {
         }
       >
         <form id="intervention-form" onSubmit={handleCreate} className="max-h-[60vh] space-y-3 overflow-y-auto">
-          {(['description', 'symptomes', 'causeRacine', 'analyseTechnique', 'actionsCorrectives', 'piecesRemplacees'] as const).map((field) => (
-            <EnterpriseTextarea
-              key={field}
-              label={INTERVENTION_FIELD_LABELS[field]}
-              value={form[field]}
-              onChange={(event) => setForm({ ...form, [field]: event.target.value })}
-              rows={2}
-            />
-          ))}
-          <div className="grid grid-cols-2 gap-3">
-            <EnterpriseInput
-              label="Durée arrêt (min)"
-              type="number"
-              value={form.dureeArretMinutes}
-              onChange={(event) => setForm({ ...form, dureeArretMinutes: event.target.value })}
-            />
-            <EnterpriseInput
-              label="Temps intervention (min)"
-              type="number"
-              value={form.tempsInterventionMinutes}
-              onChange={(event) => setForm({ ...form, tempsInterventionMinutes: event.target.value })}
-            />
-          </div>
+          <InterventionFormFields form={form} onChange={setForm} />
+        </form>
+      </EnterpriseModal>
+
+      <EnterpriseModal
+        open={editModal.isOpen}
+        onClose={() => {
+          editModal.close();
+          setEditTargetId(null);
+        }}
+        title="Modifier l'intervention"
+        size="lg"
+        footer={
+          <>
+            <EnterpriseButton
+              variant="secondary"
+              onClick={() => {
+                editModal.close();
+                setEditTargetId(null);
+              }}
+            >
+              Annuler
+            </EnterpriseButton>
+            <EnterpriseButton type="submit" form="intervention-edit-form" loading={loading}>
+              Enregistrer
+            </EnterpriseButton>
+          </>
+        }
+      >
+        <form id="intervention-edit-form" onSubmit={handleUpdate} className="max-h-[60vh] space-y-3 overflow-y-auto">
+          <InterventionFormFields form={form} onChange={setForm} />
         </form>
       </EnterpriseModal>
     </div>

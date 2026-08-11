@@ -24,7 +24,8 @@ export function useFailureDetail(id: string | undefined) {
 
   const interventionsQuery = useQuery({
     queryKey: ['interventions', { failureId: id }],
-    queryFn: () => interventionsApi.list(id!).then((response) => response.content),
+    queryFn: () =>
+      interventionsApi.list(id!, { page: 0, size: 100 }).then((response) => response.content),
     enabled: Boolean(id),
   });
 
@@ -75,6 +76,14 @@ export function useFailureDetail(id: string | undefined) {
     },
   });
 
+  const updateIntervention = useMutation({
+    mutationFn: ({ interventionId, data }: { interventionId: string; data: Partial<Intervention> }) =>
+      interventionsApi.update(interventionId, data),
+    onSuccess: () => {
+      if (id) invalidateFailureDetail(queryClient, id);
+    },
+  });
+
   const isNotFound =
     axios.isAxiosError(failureQuery.error) && failureQuery.error.response?.status === 404;
 
@@ -109,5 +118,6 @@ export function useFailureDetail(id: string | undefined) {
     createIntervention,
     submitIntervention,
     validateIntervention,
+    updateIntervention,
   };
 }

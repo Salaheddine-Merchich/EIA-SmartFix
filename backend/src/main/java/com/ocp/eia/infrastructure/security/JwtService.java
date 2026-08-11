@@ -10,9 +10,11 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Component
@@ -32,6 +34,18 @@ public class JwtService {
         return extractClaim(token, claims -> claims.get("type", String.class));
     }
 
+    public UUID extractJti(String token) {
+        String jti = extractClaim(token, Claims::getId);
+        if (jti == null || jti.isBlank()) {
+            throw new IllegalArgumentException("Missing jti");
+        }
+        return UUID.fromString(jti);
+    }
+
+    public Instant extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration).toInstant();
+    }
+
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
@@ -42,13 +56,14 @@ public class JwtService {
         claims.put("role", role);
         claims.put("nomPrenom", nomPrenom);
         claims.put("type", "access");
-        return buildToken(claims, userDetails.getUsername(), appProperties.getJwt().getAccessExpirationMs());
+        return buildToken(claims, userDetails.getUsername(), appProperties.getJwt().getAccessExpirationMs(), null);
     }
 
     public String generateRefreshToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("type", "refresh");
-        return buildToken(claims, userDetails.getUsername(), appProperties.getJwt().getRefreshExpirationMs());
+        UUID jti = UUID.randomUUID();
+        return buildToken(claims, userDetails.getUsername(), appProperties.getJwt().getRefreshExpirationMs(), jti);
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
@@ -64,16 +79,18 @@ public class JwtService {
         return "refresh".equals(extractTokenType(token));
     }
 
-    private String buildToken(Map<String, Object> extraClaims, String subject, long expirationMs) {
+    private String buildToken(Map<String, Object> extraClaims, String subject, long expirationMs, UUID jti) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .claims(extraClaims)
                 .subject(subject)
                 .issuedAt(now)
-                .expiration(expiry)
-                .signWith(getSigningKey())
-                .compact();
+                .expiration(expiry);
+        if (jti != null) {
+            builder.id(jti.toString());
+        }
+        return builder.signWith(getSigningKey()).compact();
     }
 
     private boolean isTokenExpired(String token) {

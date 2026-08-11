@@ -23,7 +23,26 @@ Thumbs.db
 
 # Env & secrets
 .env
+.env.*
+!.env.example
+!**/.env.example
 *.env.local
+credentials.json
+*.pem
+*.jks
+*.p12
+*.key
+
+# Dumps / logs
+logs/
+dumps/
+backups/
+*.dump
+*.sql.bak
+*.sql.gz
+
+# Docker local override (may set SPRING_PROFILES_ACTIVE=dev)
+docker-compose.override.yml
 
 # Uploads
 data/documents/

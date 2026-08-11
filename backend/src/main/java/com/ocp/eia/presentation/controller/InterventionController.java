@@ -106,12 +106,16 @@ public class InterventionController {
     }
 
     @GetMapping("/{id}/documents")
+    @PreAuthorize("hasAnyRole('TECHNICIEN', 'RESPONSABLE_EIA', 'ADMIN')")
+    @Operation(summary = "Lister les documents (lecture plant-wide authentifiée)")
     public ResponseEntity<List<DocumentResponse>> listDocuments(@PathVariable UUID id) {
         return ResponseEntity.ok(listDocumentsUseCase.execute(id));
     }
 
     @GetMapping(value = "/{interventionId}/documents/{documentId}/download", 
                 produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    @PreAuthorize("hasAnyRole('TECHNICIEN', 'RESPONSABLE_EIA', 'ADMIN')")
+    @Operation(summary = "Télécharger un document (lecture plant-wide authentifiée)")
     public ResponseEntity<Resource> downloadDocument(@PathVariable UUID interventionId, @PathVariable UUID documentId) {
         var result = downloadDocumentUseCase.execute(interventionId, documentId);
         
@@ -121,10 +125,12 @@ public class InterventionController {
         } catch (Exception e) {
             contentType = MediaType.APPLICATION_OCTET_STREAM;
         }
+
+        String safeName = com.ocp.eia.infrastructure.storage.FileStorageService.contentDispositionFilename(result.filename());
         
         return ResponseEntity.ok()
                 .contentType(contentType)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + result.filename() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + safeName + "\"")
                 .body(result.resource());
     }
 

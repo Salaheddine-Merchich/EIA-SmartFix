@@ -20,9 +20,14 @@
 
 ```bash
 cp .env.example .env   # renseigner POSTGRES_PASSWORD, JWT_SECRET, SPRING_DATASOURCE_PASSWORD
+# Démo locale (Swagger + comptes seed Password123!) :
+cp docker-compose.override.example.yml docker-compose.override.yml
 # Ne pas définir SPRING_DATASOURCE_URL / OLLAMA_BASE_URL (défauts Compose)
 docker compose up -d postgres backend frontend
 ```
+
+> Compose sans override = profil **prod** (comptes démo désactivés, pas de Swagger).
+> Ports bindés `127.0.0.1` uniquement. Ollama non exposé sur l’hôte.
 
 ## Démarrage avec RAG
 

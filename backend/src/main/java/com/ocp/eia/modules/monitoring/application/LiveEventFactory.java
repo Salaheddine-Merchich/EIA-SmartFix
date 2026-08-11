@@ -99,9 +99,9 @@ public class LiveEventFactory {
                 "AI_UNAVAILABLE",
                 "ai",
                 "IA indisponible",
-                event.reason(),
+                "Service d'assistance IA temporairement indisponible",
                 event.occurredAt(),
-                Map.of("reason", nullToEmpty(event.reason()))
+                Map.of()
         );
     }
 
@@ -117,11 +117,9 @@ public class LiveEventFactory {
         );
     }
 
+    /** Avoid broadcasting free-text failure descriptions on the plant-wide SSE feed. */
     private static String formatMessage(String equipmentCode, String description) {
-        String desc = description != null && !description.isBlank()
-                ? description
-                : "Incident enregistré";
-        return nullToEmpty(equipmentCode) + " — " + desc;
+        return nullToEmpty(equipmentCode) + " — incident enregistré";
     }
 
     private static String nullToEmpty(String value) {

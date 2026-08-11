@@ -25,7 +25,7 @@ export function useLoadingStatusMessage(loading: boolean): string {
     }, 10_000);
     const finalTimer = window.setTimeout(() => {
       setLoadingMessage(LOADING_MESSAGES[3]);
-    }, 120_000);
+    }, 200_000);
 
     return () => {
       window.clearTimeout(retrievalTimer);

@@ -27,7 +27,7 @@ export function CriticalEquipmentPanel({ equipment }: CriticalEquipmentPanelProp
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{item.code}</p>
-                <p className="truncate text-xs text-slate-500 dark:text-slate-400">{item.designation}</p>
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400" title={item.designation}>{item.designation}</p>
               </div>
               <div className="text-right">
                 <p className="text-sm font-bold text-red-700 dark:text-red-400">{item.failureCount}</p>

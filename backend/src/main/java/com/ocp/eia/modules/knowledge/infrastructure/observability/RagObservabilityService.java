@@ -35,6 +35,7 @@ public class RagObservabilityService {
 
     private final AtomicInteger lowConfidenceResponses = new AtomicInteger(0);
     private final AtomicInteger fallbackResponses = new AtomicInteger(0);
+    private final AtomicInteger fastPathResponses = new AtomicInteger(0);
 
     public RagObservabilityService(
             MeterRegistry meterRegistry,
@@ -71,6 +72,10 @@ public class RagObservabilityService {
 
         Gauge.builder("rag.quality.fallback_responses", fallbackResponses, AtomicInteger::get)
             .description("Nombre de réponses de secours utilisées")
+            .register(meterRegistry);
+
+        Gauge.builder("rag.quality.fast_path_responses", fastPathResponses, AtomicInteger::get)
+            .description("Nombre de réponses fast path (sans LLM)")
             .register(meterRegistry);
 
         Gauge.builder("rag.circuit_breaker.embedding_failures", this,
@@ -146,6 +151,10 @@ public class RagObservabilityService {
 
     public void recordFallbackResponse() {
         fallbackResponses.incrementAndGet();
+    }
+
+    public void recordFastPathResponse() {
+        fastPathResponses.incrementAndGet();
     }
 
     public void recordError(String errorType) {

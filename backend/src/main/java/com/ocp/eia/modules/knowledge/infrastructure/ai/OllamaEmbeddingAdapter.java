@@ -3,13 +3,15 @@ package com.ocp.eia.modules.knowledge.infrastructure.ai;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.ollama.OllamaEmbeddingModel;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
+/**
+ * Do not use {@code @ConditionalOnBean(OllamaEmbeddingModel)} on this {@code @Component}:
+ * component-scan conditions run before Spring AI auto-config registers the model.
+ */
 @Component
 @ConditionalOnExpression("${app.knowledge.enabled:false} == true and '${app.knowledge.provider:ollama}' == 'ollama'")
-@ConditionalOnBean(OllamaEmbeddingModel.class)
 @RequiredArgsConstructor
 @Slf4j
 public class OllamaEmbeddingAdapter {
@@ -23,10 +25,6 @@ public class OllamaEmbeddingAdapter {
         long durationMs = (System.nanoTime() - start) / 1_000_000L;
         int dims = embedding != null ? embedding.length : 0;
         log.info("Ollama embedding done: textLength={}, dims={}, durationMs={}", textLength, dims, durationMs);
-        if (log.isDebugEnabled() && text != null) {
-            String snippet = text.length() <= 200 ? text : text.substring(0, 200) + "...";
-            log.debug("Ollama embedding text snippet: {}", snippet);
-        }
         return embedding;
     }
 }

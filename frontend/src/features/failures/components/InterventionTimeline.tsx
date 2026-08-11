@@ -10,6 +10,10 @@ export interface InterventionTimelineProps {
   onValidate: (id: string, approved: boolean) => void;
   onExportPdf: (id: string) => void;
   onCreateIntervention: () => void;
+  onEdit?: (item: Intervention) => void;
+  onUploadDocument?: (interventionId: string, file: File) => void;
+  onDownloadDocument?: (interventionId: string, documentId: string, filename: string) => void;
+  onDeleteDocument?: (interventionId: string, documentId: string) => void;
 }
 
 export function InterventionTimeline({
@@ -20,6 +24,10 @@ export function InterventionTimeline({
   onValidate,
   onExportPdf,
   onCreateIntervention,
+  onEdit,
+  onUploadDocument,
+  onDownloadDocument,
+  onDeleteDocument,
 }: InterventionTimelineProps) {
   return (
     <EnterprisePanel
@@ -50,6 +58,10 @@ export function InterventionTimeline({
               onSubmit={onSubmit}
               onValidate={onValidate}
               onExportPdf={onExportPdf}
+              onEdit={onEdit}
+              onUploadDocument={onUploadDocument}
+              onDownloadDocument={onDownloadDocument}
+              onDeleteDocument={onDeleteDocument}
               isLast={index === interventions.length - 1}
             />
           ))}

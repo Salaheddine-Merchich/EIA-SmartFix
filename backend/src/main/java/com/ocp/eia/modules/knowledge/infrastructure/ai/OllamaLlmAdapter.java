@@ -4,16 +4,18 @@ import com.ocp.eia.modules.knowledge.domain.port.LlmProviderPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Do not use {@code @ConditionalOnBean(ChatClient)} on this {@code @Component}:
+ * scan-time conditions can miss beans defined by later {@code @Configuration}/auto-config.
+ */
 @Component
 @ConditionalOnExpression("${app.knowledge.enabled:false} == true and '${app.knowledge.provider:ollama}' == 'ollama'")
-@ConditionalOnBean(ChatClient.class)
 @RequiredArgsConstructor
 @Slf4j
 public class OllamaLlmAdapter implements LlmProviderPort {
@@ -25,9 +27,6 @@ public class OllamaLlmAdapter implements LlmProviderPort {
         int systemChars = length(systemPrompt);
         int userChars = length(userPrompt);
         log.info("Ollama LLM complete start: systemPromptChars={}, userPromptChars={}", systemChars, userChars);
-        if (log.isDebugEnabled()) {
-            log.debug("Ollama LLM userPrompt snippet: {}", truncateForLog(userPrompt, 200));
-        }
 
         long start = System.nanoTime();
         String content = chatClient
@@ -38,23 +37,18 @@ public class OllamaLlmAdapter implements LlmProviderPort {
                 .content();
 
         long durationMs = (System.nanoTime() - start) / 1_000_000L;
-        int responseChars = length(content);
-        log.info("Ollama LLM complete done: responseChars={}, durationMs={}", responseChars, durationMs);
-        if (log.isDebugEnabled() && content != null) {
-            log.debug("Ollama LLM response snippet: {}", truncateForLog(content, 200));
-        }
+        log.info("Ollama LLM complete done: responseChars={}, durationMs={}", length(content), durationMs);
         return content;
     }
 
     @Override
     public Flux<String> stream(String systemPrompt, String userPrompt) {
         try {
-            int systemChars = length(systemPrompt);
-            int userChars = length(userPrompt);
-            log.info("Ollama LLM stream start: systemPromptChars={}, userPromptChars={}", systemChars, userChars);
-            if (log.isDebugEnabled()) {
-                log.debug("Ollama LLM stream userPrompt snippet: {}", truncateForLog(userPrompt, 200));
-            }
+            log.info(
+                    "Ollama LLM stream start: systemPromptChars={}, userPromptChars={}",
+                    length(systemPrompt),
+                    length(userPrompt)
+            );
 
             AtomicInteger tokenCount = new AtomicInteger();
             long start = System.nanoTime();
@@ -74,26 +68,16 @@ public class OllamaLlmAdapter implements LlmProviderPort {
                     .doOnError(error -> log.error(
                             "Erreur streaming LLM after {} tokens: {}",
                             tokenCount.get(),
-                            error.getMessage()
+                            error.getClass().getSimpleName()
                     ));
 
         } catch (Exception e) {
-            log.error("Erreur lors de l'initialisation du streaming LLM: {}", e.getMessage());
+            log.error("Erreur lors de l'initialisation du streaming LLM: {}", e.getClass().getSimpleName());
             return Flux.error(e);
         }
     }
 
     private static int length(String value) {
         return value != null ? value.length() : 0;
-    }
-
-    private static String truncateForLog(String value, int maxChars) {
-        if (value == null) {
-            return "";
-        }
-        if (value.length() <= maxChars) {
-            return value;
-        }
-        return value.substring(0, maxChars) + "...";
     }
 }

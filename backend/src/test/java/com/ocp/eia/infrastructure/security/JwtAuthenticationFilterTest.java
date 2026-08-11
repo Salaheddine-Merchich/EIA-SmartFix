@@ -13,8 +13,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -28,6 +26,7 @@ class JwtAuthenticationFilterTest {
 
     @Mock private JwtService jwtService;
     @Mock private CustomUserDetailsService userDetailsService;
+    @Mock private AuthCookieService authCookieService;
     @Mock private HttpServletRequest request;
     @Mock private HttpServletResponse response;
     @Mock private FilterChain filterChain;
@@ -58,6 +57,7 @@ class JwtAuthenticationFilterTest {
     @Test
     void queryAccessToken_isIgnored() throws Exception {
         when(request.getHeader("Authorization")).thenReturn(null);
+        when(authCookieService.readCookie(request, AuthCookieService.ACCESS_COOKIE)).thenReturn(null);
 
         filter.doFilterInternal(request, response, filterChain);
 

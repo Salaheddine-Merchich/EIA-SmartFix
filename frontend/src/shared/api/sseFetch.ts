@@ -6,7 +6,7 @@ export type SseHandlers = {
 };
 
 /**
- * SSE client with Authorization Bearer (EventSource cannot set headers).
+ * SSE client with credentials (HttpOnly cookies). Optional Bearer for API clients.
  * Retries once after refresh on 401/403.
  */
 export async function connectSse(
@@ -14,17 +14,15 @@ export async function connectSse(
   handlers: SseHandlers,
   options: { signal?: AbortSignal } = {},
 ): Promise<void> {
-  const run = async (accessToken: string | null, allowRefresh: boolean): Promise<void> => {
+  const run = async (allowRefresh: boolean): Promise<void> => {
     const headers: Record<string, string> = {
       Accept: 'text/event-stream',
     };
-    if (accessToken) {
-      headers.Authorization = `Bearer ${accessToken}`;
-    }
 
     const response = await fetch(url, {
       method: 'GET',
       headers,
+      credentials: 'include',
       signal: options.signal,
     });
 
@@ -34,7 +32,7 @@ export async function connectSse(
         clearAuthSession();
         throw new Error('Session expirée.');
       }
-      return run(newToken, false);
+      return run(false);
     }
 
     if (!response.ok) {
@@ -90,7 +88,7 @@ export async function connectSse(
   };
 
   try {
-    await run(localStorage.getItem('accessToken'), true);
+    await run(true);
   } catch (error) {
     if (options.signal?.aborted) {
       return;

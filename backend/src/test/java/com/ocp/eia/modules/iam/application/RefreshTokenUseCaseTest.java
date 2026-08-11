@@ -1,18 +1,19 @@
 package com.ocp.eia.modules.iam.application;
 
 import com.ocp.eia.application.dto.AuthDto.AuthResponse;
-import com.ocp.eia.application.dto.AuthDto.RefreshTokenRequest;
 import com.ocp.eia.domain.model.Role;
 import com.ocp.eia.domain.model.User;
 import com.ocp.eia.infrastructure.security.CustomUserDetailsService;
 import com.ocp.eia.infrastructure.security.JwtService;
-import com.ocp.eia.shared.exception.BadRequestException;
+import com.ocp.eia.shared.exception.UnauthorizedException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.userdetails.UserDetails;
+
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -23,13 +24,15 @@ class RefreshTokenUseCaseTest {
 
     @Mock private JwtService jwtService;
     @Mock private CustomUserDetailsService userDetailsService;
+    @Mock private RefreshTokenService refreshTokenService;
 
     @InjectMocks private RefreshTokenUseCase useCase;
 
     @Test
-    void execute_returnsNewTokens() {
-        RefreshTokenRequest request = new RefreshTokenRequest("old-refresh-token");
+    void execute_returnsNewTokensAndRotates() {
+        UUID userId = UUID.randomUUID();
         User user = User.builder()
+                .id(userId)
                 .email("admin@ocp.ma")
                 .nomPrenom("Admin OCP")
                 .role(Role.ADMIN)
@@ -48,28 +51,25 @@ class RefreshTokenUseCaseTest {
         when(jwtService.generateAccessToken(userDetails, "ADMIN", "Admin OCP")).thenReturn("new-access");
         when(jwtService.generateRefreshToken(userDetails)).thenReturn("new-refresh");
 
-        AuthResponse response = useCase.execute(request);
+        AuthResponse response = useCase.execute("old-refresh-token");
 
         assertEquals("new-access", response.accessToken());
         assertEquals("new-refresh", response.refreshToken());
-        assertEquals("Bearer", response.tokenType());
-        assertEquals("ADMIN", response.role());
-        assertEquals("Admin OCP", response.nomPrenom());
-        assertEquals("admin@ocp.ma", response.email());
+        verify(refreshTokenService).assertActive("old-refresh-token");
+        verify(refreshTokenService).revoke("old-refresh-token");
+        verify(refreshTokenService).persist("new-refresh", userId);
     }
 
     @Test
-    void execute_invalidRefreshToken_throws() {
-        RefreshTokenRequest request = new RefreshTokenRequest("not-a-refresh-token");
+    void execute_invalidRefreshToken_throwsUnauthorized() {
         when(jwtService.isRefreshToken("not-a-refresh-token")).thenReturn(false);
 
-        assertThrows(BadRequestException.class, () -> useCase.execute(request));
+        assertThrows(UnauthorizedException.class, () -> useCase.execute("not-a-refresh-token"));
         verify(userDetailsService, never()).loadUserByUsername(any());
     }
 
     @Test
-    void execute_expiredRefreshToken_throws() {
-        RefreshTokenRequest request = new RefreshTokenRequest("expired-token");
+    void execute_expiredRefreshToken_throwsUnauthorized() {
         UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
                 .username("admin@ocp.ma")
                 .password("hash")
@@ -81,8 +81,8 @@ class RefreshTokenUseCaseTest {
         when(userDetailsService.loadUserByUsername("admin@ocp.ma")).thenReturn(userDetails);
         when(jwtService.isTokenValid("expired-token", userDetails)).thenReturn(false);
 
-        BadRequestException ex = assertThrows(BadRequestException.class, () -> useCase.execute(request));
-        assertEquals("Token de rafraîchissement expiré", ex.getMessage());
+        UnauthorizedException ex = assertThrows(UnauthorizedException.class, () -> useCase.execute("expired-token"));
+        assertEquals("Session expirée", ex.getMessage());
         verify(jwtService, never()).generateAccessToken(any(), any(), any());
     }
 }

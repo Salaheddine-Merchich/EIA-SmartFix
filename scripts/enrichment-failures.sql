@@ -13,7 +13,8 @@ VALUES
     ('f2020202-2020-2020-2020-202020202020', '20202020-2020-2020-2020-202020202020', '2026-07-25 16:20:00', 'HAUTE', 'Zone B', '22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'RESOLUE', 'Mesure débit bloquée à 0 m3/h malgré circulation visible', 'F004'),
     
     -- AIT-134 (Analyseur pH)
-    ('f3030301-3030-3030-3030-303030303030', '30303030-3030-3030-3030-303030303030', '2026-07-22 08:30:00', 'MOYENNE', 'Zone C', '22222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333', 'RESOLUE', 'Analyseur pH lecture instable, valeur fluctue entre 6.8 et 8.2', 'A001');
+    ('f3030301-3030-3030-3030-303030303030', '30303030-3030-3030-3030-303030303030', '2026-07-22 08:30:00', 'MOYENNE', 'Zone C', '22222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333', 'RESOLUE', 'Analyseur pH lecture instable, valeur fluctue entre 6.8 et 8.2', 'A001')
+ON CONFLICT (id) DO NOTHING;
 
 -- Pannes Automatisme
 INSERT INTO failures (id, equipment_id, date_heure, criticite, zone_service, responsable_id, declarant_id, statut, description_initiale, code_defaut)
@@ -27,7 +28,8 @@ VALUES
     
     -- UPS-012 (Onduleur)
     ('f6060601-6060-6060-6060-606060606060', '60606060-6060-6060-6060-606060606060', '2026-07-21 07:50:00', 'CRITIQUE', 'Zone C', '22222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333', 'RESOLUE', 'Onduleur alarme batterie défaillante, autonomie réduite à 3 minutes', 'E007'),
-    ('f6060602-6060-6060-6060-606060606060', '60606060-6060-6060-6060-606060606060', '2026-07-30 12:25:00', 'MOYENNE', 'Zone C', '22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'RESOLUE', 'Surtension réseau détectée, onduleur passe en mode bypass', 'E008');
+    ('f6060602-6060-6060-6060-606060606060', '60606060-6060-6060-6060-606060606060', '2026-07-30 12:25:00', 'MOYENNE', 'Zone C', '22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'RESOLUE', 'Surtension réseau détectée, onduleur passe en mode bypass', 'E008')
+ON CONFLICT (id) DO NOTHING;
 
 -- Pannes Mécanique  
 INSERT INTO failures (id, equipment_id, date_heure, criticite, zone_service, responsable_id, declarant_id, statut, description_initiale, code_defaut)
@@ -38,7 +40,8 @@ VALUES
     
     -- VEN-123 (Ventilateur)
     ('f8080801-8080-8080-8080-808080808080', '80808080-8080-8080-8080-808080808080', '2026-07-23 11:20:00', 'MOYENNE', 'Zone A', '22222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333', 'RESOLUE', 'Ventilateur débit insuffisant, performance réduite de 40%', 'M011'),
-    ('f8080802-8080-8080-8080-808080808080', '80808080-8080-8080-8080-808080808080', '2026-08-03 16:45:00', 'HAUTE', 'Zone A', '22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'RESOLUE', 'Courroie ventilateur détendue, glissement sous charge', 'M012');
+    ('f8080802-8080-8080-8080-808080808080', '80808080-8080-8080-8080-808080808080', '2026-08-03 16:45:00', 'HAUTE', 'Zone A', '22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'RESOLUE', 'Courroie ventilateur détendue, glissement sous charge', 'M012')
+ON CONFLICT (id) DO NOTHING;
 
 -- Pannes Électricité
 INSERT INTO failures (id, equipment_id, date_heure, criticite, zone_service, responsable_id, declarant_id, statut, description_initiale, code_defaut)
@@ -49,4 +52,5 @@ VALUES
     
     -- TRF-567 (Transformateur)
     ('fa0a0a01-a0a0-a0a0-a0a0-a0a0a0a0a0a0', 'a0a0a0a0-a0a0-a0a0-a0a0-a0a0a0a0a0a0', '2026-07-26 10:30:00', 'MOYENNE', 'Zone C', '22222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333', 'RESOLUE', 'Transformateur surchauffe, température enroulement +85°C', 'T015'),
-    ('fa0a0a02-a0a0-a0a0-a0a0-a0a0a0a0a0a0', 'a0a0a0a0-a0a0-a0a0-a0a0-a0a0a0a0a0a0', '2026-08-04 15:10:00', 'HAUTE', 'Zone C', '22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'RESOLUE', 'Harmoniques transformateur, déformation onde sinusoïdale', 'T016');
+    ('fa0a0a02-a0a0-a0a0-a0a0-a0a0a0a0a0a0', 'a0a0a0a0-a0a0-a0a0-a0a0-a0a0a0a0a0a0', '2026-08-04 15:10:00', 'HAUTE', 'Zone C', '22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'RESOLUE', 'Harmoniques transformateur, déformation onde sinusoïdale', 'T016')
+ON CONFLICT (id) DO NOTHING;

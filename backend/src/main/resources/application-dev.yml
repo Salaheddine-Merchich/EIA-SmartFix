@@ -4,11 +4,14 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:15432/eia_smartfix}
     username: ${SPRING_DATASOURCE_USERNAME:eia_user}
+    # Required in real envs; local Maven convenience default only (Compose uses :? in .env)
     password: ${SPRING_DATASOURCE_PASSWORD:eia_password_change_me}
   jpa:
     show-sql: true
 
 app:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-change-me-not-for-production-use-32chars}
   knowledge:
     # Compose sets KNOWLEDGE_ENABLED=false unless --profile ai; local Maven defaults to on
     enabled: ${KNOWLEDGE_ENABLED:true}
@@ -22,9 +25,17 @@ app:
       - http://localhost:80
       - http://127.0.0.1:80
 
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
 logging:
   level:
-    com.ocp.eia: DEBUG
+    # Avoid logging prompt/query content; keep DEBUG off for knowledge by default
+    com.ocp.eia: INFO
+    com.ocp.eia.modules.knowledge: INFO
     org.hibernate.SQL: INFO
     org.hibernate.orm.jdbc.bind: WARN
     org.springframework.security: INFO

@@ -43,3 +43,8 @@ export interface Conversation {
 }
 
 export type SimilarInterventionItem = AiAssistResponse['similarInterventions'][number];
+
+export interface AssistContext {
+  failureId?: string;
+  equipmentId?: string;
+}

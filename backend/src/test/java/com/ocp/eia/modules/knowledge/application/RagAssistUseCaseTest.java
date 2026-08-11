@@ -3,8 +3,10 @@ package com.ocp.eia.modules.knowledge.application;
 import com.ocp.eia.application.dto.AiDto.AiAssistRequest;
 import com.ocp.eia.application.dto.AiDto.AiAssistResponse;
 import com.ocp.eia.application.dto.AiDto.AiSuggestions;
+import com.ocp.eia.config.AppProperties;
 import com.ocp.eia.modules.knowledge.application.RagRetrievalService.RetrievalOutcome;
 import com.ocp.eia.modules.knowledge.domain.model.SimilarIntervention;
+import com.ocp.eia.modules.knowledge.domain.model.SimilarKnowledgeDocument;
 import com.ocp.eia.modules.knowledge.domain.port.LlmProviderPort;
 import com.ocp.eia.modules.knowledge.infrastructure.observability.RagObservabilityService;
 import com.ocp.eia.modules.knowledge.infrastructure.observability.RagRetrievalMetrics;
@@ -37,9 +39,7 @@ import static org.mockito.Mockito.when;
 class RagAssistUseCaseTest {
 
     @Mock private RagRetrievalService ragRetrievalService;
-    @Mock private RagPromptBuilder ragPromptBuilder;
-    @Mock private RagSuggestionParser ragSuggestionParser;
-    @Mock private LlmProviderPort llmProvider;
+    @Mock private RagSuggestionService ragSuggestionService;
     @Mock private RagRetrievalMetrics ragRetrievalMetrics;
     @Mock private RagObservabilityService ragObservabilityService;
     @Mock private ApplicationEventPublisher eventPublisher;
@@ -57,19 +57,20 @@ class RagAssistUseCaseTest {
     @Test
     void assist_noEvidence_returnsFallbackSuggestions() {
         AiAssistRequest request = new AiAssistRequest(null, null, "Panne variateur", null);
-        when(ragRetrievalService.retrieve(request)).thenReturn(successOutcome(List.of(), 0, 0, 0));
-        when(ragSuggestionParser.noEvidenceFallback()).thenReturn(new AiSuggestions(
+        AiSuggestions fallback = new AiSuggestions(
                 List.of("Aucune intervention similaire validée trouvée"),
                 List.of("Consulter la documentation constructeur"),
                 "Pas assez de données",
                 "Documentez"
-        ));
+        );
+        when(ragRetrievalService.retrieve(request)).thenReturn(successOutcome(List.of(), 0, 0, 0));
+        when(ragSuggestionService.generateSuggestions(eq("Panne variateur"), eq(List.of()), eq(List.of())))
+                .thenReturn(new RagSuggestionService.SuggestionResult(fallback, 0L, false));
 
         AiAssistResponse response = useCase.assist(request);
 
         assertTrue(response.similarInterventions().isEmpty());
         assertEquals("Aucune intervention similaire validée trouvée", response.suggestions().probableCauses().get(0));
-        verify(llmProvider, never()).complete(anyString(), anyString());
         verify(ragObservabilityService).recordSuccessfulQuery();
         verify(diagnosticStatsService).record(any());
     }
@@ -87,20 +88,38 @@ class RagAssistUseCaseTest {
         );
 
         when(ragRetrievalService.retrieve(request)).thenReturn(successOutcome(List.of(similar), 1, 0, 1));
-        when(ragPromptBuilder.systemPrompt()).thenReturn("system");
-        when(ragPromptBuilder.userPrompt(eq("Défaut moteur"), eq(List.of(similar)), eq(List.of())))
-                .thenReturn("user");
-        when(llmProvider.complete("system", "user")).thenReturn("{\"ok\":true}");
-        doReturn(suggestions).when(ragSuggestionParser).parse("{\"ok\":true}");
+        when(ragSuggestionService.generateSuggestions(eq("Défaut moteur"), eq(List.of(similar)), eq(List.of())))
+                .thenReturn(new RagSuggestionService.SuggestionResult(suggestions, 1200L, false));
 
         AiAssistResponse response = useCase.assist(request);
 
         assertEquals(1, response.similarInterventions().size());
         assertEquals(interventionId, response.similarInterventions().get(0).interventionId());
         assertEquals(suggestions, response.suggestions());
-        verify(ragRetrievalMetrics).recordLlmCall();
         verify(ragObservabilityService).incrementActiveQueries();
         verify(ragObservabilityService).decrementActiveQueries();
+    }
+
+    @Test
+    void assist_highSimilarity_skipsLlmViaFastPath() {
+        AiAssistRequest request = new AiAssistRequest(null, null, "Surchauffe moteur", null);
+        SimilarIntervention similar = similar(UUID.randomUUID(), 0.90);
+        AiSuggestions fastPathSuggestions = new AiSuggestions(
+                List.of("Roulement arriere grippe"),
+                List.of("Remplacement roulement SKF 6312"),
+                "Historique similaire",
+                "Valider avant intervention"
+        );
+
+        when(ragRetrievalService.retrieve(request)).thenReturn(successOutcome(List.of(similar), 1, 0, 1));
+        when(ragSuggestionService.generateSuggestions(eq("Surchauffe moteur"), eq(List.of(similar)), eq(List.of())))
+                .thenReturn(new RagSuggestionService.SuggestionResult(fastPathSuggestions, 0L, true));
+
+        AiAssistResponse response = useCase.assist(request);
+
+        assertEquals(fastPathSuggestions, response.suggestions());
+        assertEquals(1, response.similarInterventions().size());
+        verify(ragObservabilityService).recordSuccessfulQuery();
     }
 
     @Test
@@ -118,13 +137,13 @@ class RagAssistUseCaseTest {
         assertEquals("FAILED", response.diagnosticTrace().retrievalSteps().get(0).status());
         verify(eventPublisher).publishEvent(any(AiServiceUnavailableEvent.class));
         verify(ragObservabilityService).recordFallbackResponse();
-        verify(llmProvider, never()).complete(anyString(), anyString());
+        verify(ragSuggestionService, never()).generateSuggestions(anyString(), any(), any());
     }
 
     @Test
     void assist_llmFailure_fallsBackToHistory() {
         AiAssistRequest request = new AiAssistRequest(null, null, "Panne", null);
-        SimilarIntervention similar = similar(UUID.randomUUID(), 0.9);
+        SimilarIntervention similar = similar(UUID.randomUUID(), 0.75);
         AiSuggestions fallback = new AiSuggestions(
                 List.of("Cause historique"),
                 List.of("Action historique"),
@@ -133,10 +152,8 @@ class RagAssistUseCaseTest {
         );
 
         when(ragRetrievalService.retrieve(request)).thenReturn(successOutcome(List.of(similar), 1, 0, 1));
-        when(ragPromptBuilder.systemPrompt()).thenReturn("system");
-        when(ragPromptBuilder.userPrompt(anyString(), any(), any())).thenReturn("user");
-        when(llmProvider.complete(anyString(), anyString())).thenThrow(new RuntimeException("llm down"));
-        when(ragSuggestionParser.fallbackFromHistory(eq(List.of(similar)), eq(List.of()))).thenReturn(fallback);
+        when(ragSuggestionService.generateSuggestions(eq("Panne"), eq(List.of(similar)), eq(List.of())))
+                .thenReturn(new RagSuggestionService.SuggestionResult(fallback, 500L, false));
 
         AiAssistResponse response = useCase.assist(request);
 

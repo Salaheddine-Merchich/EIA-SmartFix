@@ -5,6 +5,7 @@ import com.ocp.eia.shared.exception.BadRequestException;
 import com.ocp.eia.shared.exception.ConflictException;
 import com.ocp.eia.shared.exception.DomainRuleViolationException;
 import com.ocp.eia.shared.exception.ResourceNotFoundException;
+import com.ocp.eia.shared.exception.UnauthorizedException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -56,6 +57,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiErrorResponse> handleBadCredentials(BadCredentialsException ex) {
         return build(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Email ou mot de passe incorrect", null);
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ApiErrorResponse> handleUnauthorized(UnauthorizedException ex) {
+        return build(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage(), null);
     }
 
     @ExceptionHandler(AccessDeniedException.class)

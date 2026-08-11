@@ -16,14 +16,14 @@ export function ReliabilityMetrics({ stats }: ReliabilityMetricsProps) {
         </p>
       </DashboardPanel>
 
-      <DashboardPanel title="MTTR" subtitle="Temps moyen de réparation">
+      <DashboardPanel title="MTTR" subtitle="Durée moyenne d'intervention technicien">
         <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">{formatDurationMinutes(stats.mttrMinutes)}</p>
-        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Calculé sur les interventions validées</p>
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Moyenne du temps d'intervention sur les fiches validées</p>
       </DashboardPanel>
 
-      <DashboardPanel title="MTBF" subtitle="Temps moyen entre pannes">
+      <DashboardPanel title="MTBF" subtitle="Intervalle moyen entre pannes">
         <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">{formatDurationHours(stats.mtbfHours)}</p>
-        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Indicateur de fiabilité du parc</p>
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Moyenne globale entre pannes consécutives par équipement</p>
       </DashboardPanel>
     </section>
   );

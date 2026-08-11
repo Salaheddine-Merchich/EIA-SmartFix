@@ -3,25 +3,45 @@ import type { AuthResponse } from '@/shared/types';
 import { getApiBaseUrl } from './baseUrl';
 
 const API_URL = getApiBaseUrl();
+const USER_STORAGE_KEY = 'eia_user_profile';
 
 export const AUTH_TOKEN_REFRESHED_EVENT = 'auth:token-refreshed';
 
 export const api = axios.create({
   baseURL: API_URL,
+  withCredentials: true,
 });
 
 let refreshPromise: Promise<string | null> | null = null;
 
+/** Persist non-secret profile fields only (no JWT in storage). */
+export function storeUserProfile(authResponse: AuthResponse) {
+  const profile: AuthResponse = {
+    accessToken: '',
+    refreshToken: '',
+    tokenType: authResponse.tokenType,
+    role: authResponse.role,
+    nomPrenom: authResponse.nomPrenom,
+    email: authResponse.email,
+  };
+  sessionStorage.setItem(USER_STORAGE_KEY, JSON.stringify(profile));
+}
+
+export function readUserProfile(): AuthResponse | null {
+  const stored = sessionStorage.getItem(USER_STORAGE_KEY);
+  return stored ? (JSON.parse(stored) as AuthResponse) : null;
+}
+
 function notifyTokenRefreshed(accessToken: string, authResponse: AuthResponse) {
-  localStorage.setItem('accessToken', authResponse.accessToken);
-  localStorage.setItem('refreshToken', authResponse.refreshToken);
-  localStorage.setItem('user', JSON.stringify(authResponse));
+  storeUserProfile(authResponse);
   window.dispatchEvent(
     new CustomEvent(AUTH_TOKEN_REFRESHED_EVENT, { detail: { accessToken } }),
   );
 }
 
 export function clearAuthSession() {
+  sessionStorage.removeItem(USER_STORAGE_KEY);
+  // Legacy cleanup from previous localStorage token storage
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('user');
@@ -33,17 +53,14 @@ export async function refreshAccessToken(): Promise<string | null> {
   }
 
   refreshPromise = (async () => {
-    const refreshToken = localStorage.getItem('refreshToken');
-    if (!refreshToken) {
-      return null;
-    }
-
     try {
-      const { data } = await axios.post<AuthResponse>(`${API_URL}/api/v1/auth/refresh`, {
-        refreshToken,
-      });
+      const { data } = await axios.post<AuthResponse>(
+        `${API_URL}/api/v1/auth/refresh`,
+        {},
+        { withCredentials: true },
+      );
       notifyTokenRefreshed(data.accessToken, data);
-      return data.accessToken;
+      return data.accessToken || 'cookie';
     } catch {
       return null;
     } finally {
@@ -52,11 +69,6 @@ export async function refreshAccessToken(): Promise<string | null> {
   })();
 
   return refreshPromise;
-}
-
-function hadAuthorizationHeader(config: InternalAxiosRequestConfig): boolean {
-  const header = config.headers?.Authorization;
-  return typeof header === 'string' && header.length > 0;
 }
 
 type RetryableRequestConfig = InternalAxiosRequestConfig & { _retry?: boolean };
@@ -68,10 +80,7 @@ function shouldAttemptTokenRefresh(
   if (config._retry || isPublicAuthRequest(config.url)) {
     return false;
   }
-  if (status !== 401 && status !== 403) {
-    return false;
-  }
-  return hadAuthorizationHeader(config) || !!localStorage.getItem('accessToken');
+  return status === 401 || status === 403;
 }
 
 function isPublicAuthRequest(url: string | undefined): boolean {
@@ -127,6 +136,7 @@ export function createApiError(status: number, data: unknown, statusText = 'Erro
 }
 
 api.interceptors.request.use((config) => {
+  config.withCredentials = true;
   if (config.data instanceof FormData) {
     clearContentTypeHeader(config);
   } else if (shouldUseJsonContentType(config.data)) {
@@ -134,12 +144,8 @@ api.interceptors.request.use((config) => {
   }
   if (isPublicAuthRequest(config.url)) {
     delete config.headers.Authorization;
-    return config;
   }
-  const token = localStorage.getItem('accessToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  // Auth via HttpOnly cookies (credentials). Optional Bearer left unset intentionally.
   return config;
 });
 
@@ -159,7 +165,6 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    original.headers.Authorization = `Bearer ${newToken}`;
     return api(original);
   },
 );

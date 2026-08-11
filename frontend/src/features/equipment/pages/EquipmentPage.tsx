@@ -291,10 +291,37 @@ export default function EquipmentPage() {
                         {new Date(intervention.createdAt).toLocaleString('fr-FR')}
                       </p>
                       {intervention.symptomes && (
-                        <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">{intervention.symptomes}</p>
+                        <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+                          <span className="font-medium">Symptômes :</span> {intervention.symptomes}
+                        </p>
                       )}
                       {intervention.causeRacine && (
-                        <p className="text-xs text-slate-500">Cause : {intervention.causeRacine}</p>
+                        <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+                          <span className="font-medium">Cause :</span> {intervention.causeRacine}
+                        </p>
+                      )}
+                      {intervention.analyseTechnique && (
+                        <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+                          <span className="font-medium">Analyse :</span> {intervention.analyseTechnique}
+                        </p>
+                      )}
+                      {intervention.actionsCorrectives && (
+                        <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+                          <span className="font-medium">Actions :</span> {intervention.actionsCorrectives}
+                        </p>
+                      )}
+                      {intervention.piecesRemplacees && (
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          <span className="font-medium">Pièces :</span> {intervention.piecesRemplacees}
+                        </p>
+                      )}
+                      {(intervention.dureeArretMinutes != null || intervention.tempsInterventionMinutes != null) && (
+                        <p className="mt-1 text-xs text-slate-500">
+                          {intervention.dureeArretMinutes != null && `Arrêt ${intervention.dureeArretMinutes} min`}
+                          {intervention.dureeArretMinutes != null && intervention.tempsInterventionMinutes != null && ' · '}
+                          {intervention.tempsInterventionMinutes != null &&
+                            `Intervention ${intervention.tempsInterventionMinutes} min`}
+                        </p>
                       )}
                       {intervention.failureId && (
                         <Link

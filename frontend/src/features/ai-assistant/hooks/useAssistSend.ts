@@ -13,6 +13,7 @@ import { aiApi } from '@/shared/api';
 import type {
   AssistantMessage,
   AssistantStatus,
+  AssistContext,
   Conversation,
   UserMessage,
 } from '../types';
@@ -27,9 +28,10 @@ import { isAssistCancelled, mapAssistError } from '../utils/mapAssistError';
 interface UseAssistSendOptions {
   setConversation: Dispatch<SetStateAction<Conversation>>;
   setStatus: Dispatch<SetStateAction<AssistantStatus>>;
+  assistContext: AssistContext;
 }
 
-export function useAssistSend({ setConversation, setStatus }: UseAssistSendOptions) {
+export function useAssistSend({ setConversation, setStatus, assistContext }: UseAssistSendOptions) {
   const [loading, setLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
@@ -87,6 +89,8 @@ export function useAssistSend({ setConversation, setStatus }: UseAssistSendOptio
         const response = await aiApi.assist(content, {
           signal: controller.signal,
           topK: 3,
+          failureId: assistContext.failureId,
+          equipmentId: assistContext.equipmentId,
         });
 
         if (requestId !== requestIdRef.current) return;
@@ -122,7 +126,7 @@ export function useAssistSend({ setConversation, setStatus }: UseAssistSendOptio
         }
       }
     },
-    [abortActive, loading, setConversation, setStatus],
+    [abortActive, assistContext.equipmentId, assistContext.failureId, loading, setConversation, setStatus],
   );
 
   return {

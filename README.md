@@ -39,7 +39,7 @@ Monolithe Spring Boot en couches :
 | `ai` | `application-ai.yml` | Config Ollama / RAG (modèles, timeouts, top-k) |
 | `prod` | `application-prod.yml` | Datasource, JWT, CORS et chemins **obligatoires via variables d'environnement** ; Swagger désactivé |
 
-En local : `dev` (ou `dev,ai`). En Docker Compose : `SPRING_PROFILES_ACTIVE=dev` et `KNOWLEDGE_ENABLED=false` par défaut ; activer le RAG avec `--profile ai` + `SPRING_PROFILES_ACTIVE=dev,ai` et `KNOWLEDGE_ENABLED=true`.
+En local Maven : profil `dev` (ou `dev,ai`). En Docker Compose : défaut **`prod`** (sécurisé). Pour une démo locale avec seeds/Swagger : `cp docker-compose.override.example.yml docker-compose.override.yml` (profil `dev`). RAG : `--profile ai` + `KNOWLEDGE_ENABLED=true` (+ `SPRING_PROFILES_ACTIVE=dev,ai` dans l’override).
 
 Secrets et config sensible (JWT, mots de passe DB, CORS prod, etc.) viennent de l'environnement — voir `.env.example` et [docs/SECURITY.md](docs/SECURITY.md). Ne pas committer de `.env` réel. Compose **exige** `POSTGRES_PASSWORD` et `JWT_SECRET` dans `.env`.
 
@@ -58,19 +58,18 @@ Checklist livraison / démo : [docs/PRODUCTION_CHECKLIST.md](docs/PRODUCTION_CHE
 ```bash
 cp .env.example .env
 # Renseigner POSTGRES_PASSWORD, JWT_SECRET, SPRING_DATASOURCE_PASSWORD
+# Démo locale (Swagger + comptes seed) :
+cp docker-compose.override.example.yml docker-compose.override.yml
 # Ne PAS définir SPRING_DATASOURCE_URL ni OLLAMA_BASE_URL pour Compose
-# (défauts : postgres:5432 et ollama:11434 dans le réseau Docker).
 
 docker compose up -d postgres
-# Attendre le healthcheck PostgreSQL, puis :
 docker compose up -d backend frontend
 
-# Phase IA (optionnel — profil Compose "ai") :
+# Phase IA (optionnel — Ollama interne au réseau Docker, non publié sur l'hôte) :
 docker compose --profile ai up -d ollama
 docker exec eia-ollama ollama pull nomic-embed-text
 docker exec eia-ollama ollama pull llama3.2
-# Dans .env : SPRING_PROFILES_ACTIVE=dev,ai  KNOWLEDGE_ENABLED=true
-# optionnel : OLLAMA_BASE_URL=http://ollama:11434
+# Override / .env : SPRING_PROFILES_ACTIVE=dev,ai  KNOWLEDGE_ENABLED=true
 docker compose up -d backend
 ```
 
@@ -79,11 +78,11 @@ Checklist smoke démo : [docs/PRODUCTION_CHECKLIST.md](docs/PRODUCTION_CHECKLIST
 
 | Service | URL |
 |---------|-----|
-| Frontend (nginx) | http://localhost:80 |
-| Backend API | http://localhost:8080 |
-| Swagger (profil `dev`) | http://localhost:8080/swagger-ui.html |
-| Ollama | http://localhost:11434 |
-| PostgreSQL (hôte) | `localhost:15432` |
+| Frontend (nginx) | http://127.0.0.1:80 |
+| Backend API | http://127.0.0.1:8080 |
+| Swagger (profil `dev` / override) | http://127.0.0.1:8080/swagger-ui.html |
+| Ollama | réseau Docker uniquement (`http://ollama:11434`) |
+| PostgreSQL (hôte) | `127.0.0.1:15432` |
 
 ### Développement local
 
@@ -111,7 +110,7 @@ npm run dev
 
 ## Comptes de démonstration (local-dev uniquement)
 
-Ces comptes sont créés par les migrations de seed et destinés **exclusivement au développement local**. Ils ne doivent jamais être déployés : en production, les utilisateurs sont créés via l'API d'administration et aucun mot de passe n'est versionné.
+Créés par les seeds Flyway, **désactivés hors profil `dev`** (migration V20). Le profil `dev` (override Compose) les réactive avec le mot de passe ci-dessous. En production : créer les utilisateurs via l’API admin — aucun mot de passe démo.
 
 | Email | Mot de passe | Rôle |
 |-------|-------------|------|
@@ -130,6 +129,72 @@ Ces comptes sont créés par les migrations de seed et destinés **exclusivement
 | `/api/v1/search` | Recherche full-text |
 | `/api/v1/dashboard` | MTBF, MTTR, statistiques |
 | `/api/v1/ai/assist` | Assistance RAG (`app.knowledge.enabled=true`) |
+
+## Persistance des données (Docker)
+
+Les pannes, interventions, utilisateurs et documents sont stockés dans le volume Docker **`postgres_data`** (fichiers uploadés : volume **`document_data`**).
+
+| Action | Données conservées ? |
+|--------|----------------------|
+| `docker compose restart` / `up` / rebuild image | Oui |
+| `docker compose down` (sans `-v`) | Oui |
+| `docker compose down -v` ou suppression du volume | **Non** — retour aux seeds Flyway (~3 users démo, 0 pannes) |
+
+**Sauvegarde rapide :**
+
+```bash
+docker exec eia-postgres pg_dump -U eia_user eia_smartfix > backup.sql
+```
+
+**Restauration :**
+
+```bash
+docker exec -i eia-postgres psql -U eia_user -d eia_smartfix < backup.sql
+```
+
+**Vérifier le contenu actuel :**
+
+```powershell
+.\scripts\check-data.ps1
+```
+
+**Restaurer les données RAG après perte de volume (plan B — sans backup) :**
+
+```powershell
+.\scripts\restore-rag-data.ps1
+```
+
+Crée les 4 utilisateurs manquants, injecte 8 pannes/interventions validées (API), **+10 équipements et +18 pannes/interventions SQL** (FullRag, activé par défaut), puis réindexe le RAG. Mot de passe par défaut : `Password123!`.
+
+Counts attendus après restauration complète : **14 équipements**, **26 pannes**, **26 interventions validées**.
+
+**Vérifier la base RAG (guides + embeddings)** — le KPI « Documents techniques » affiche les guides actifs ; le hint dashboard indique aussi les interventions indexées pour le RAG :
+
+```bash
+docker compose -p eiasmartfix --profile ai up -d ollama backend frontend
+docker exec eia-ollama ollama list   # llama3.2 + nomic-embed-text
+docker exec eia-postgres psql -U eia_user -d eia_smartfix -c "SELECT COUNT(*) FROM knowledge_documents; SELECT COUNT(*) FROM intervention_embeddings;"
+```
+
+Attendu après seeds Flyway + restauration : **13** guides (`knowledge_documents`) et **26** embeddings d'interventions (`intervention_embeddings`). Si les embeddings sont incomplets :
+
+```powershell
+# JWT admin requis — ou relancer restore-rag-data.ps1 (réindexe en fin de script)
+curl -X POST http://127.0.0.1:8080/api/v1/admin/knowledge/reindex -H "Authorization: Bearer <token>"
+```
+
+Pour restaurer sans l'enrichissement SQL : `.\scripts\restore-rag-data.ps1 -NoFullRag`
+
+**Backups datés (recommandé après restauration ou avant `docker compose down -v`) :**
+
+```powershell
+mkdir backups -Force
+docker exec eia-postgres pg_dump -U eia_user eia_smartfix > backups/backup-$(Get-Date -Format yyyyMMdd).sql
+```
+
+Les fichiers `backups/*.sql` sont ignorés par Git (données locales).
+
+Ne pas définir `SPRING_DATASOURCE_URL=localhost:15432` dans le conteneur backend Docker — utiliser le service Compose `postgres:5432`.
 
 ## Scripts d'enrichissement (dev)
 

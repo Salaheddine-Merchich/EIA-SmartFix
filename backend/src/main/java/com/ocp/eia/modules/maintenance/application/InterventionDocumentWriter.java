@@ -6,6 +6,7 @@ import com.ocp.eia.domain.model.Intervention;
 import com.ocp.eia.domain.model.InterventionDocument;
 import com.ocp.eia.domain.repository.InterventionDocumentRepository;
 import com.ocp.eia.domain.repository.InterventionRepository;
+import com.ocp.eia.infrastructure.storage.FileStorageService;
 import com.ocp.eia.modules.maintenance.domain.port.DocumentStoragePort;
 import com.ocp.eia.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +36,7 @@ public class InterventionDocumentWriter {
 
         InterventionDocument document = InterventionDocument.builder()
                 .intervention(intervention)
-                .nomFichier(file.getOriginalFilename())
+                .nomFichier(FileStorageService.sanitizeFilename(file.getOriginalFilename()))
                 .cheminStockage(stored.storagePath())
                 .typeMime(stored.contentType())
                 .tailleOctets(stored.size())

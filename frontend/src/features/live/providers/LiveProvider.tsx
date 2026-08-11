@@ -10,7 +10,6 @@ import {
 } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { AUTH_TOKEN_REFRESHED_EVENT } from '@/shared/api/client';
 import { connectLiveStream } from '../services/liveStreamService';
 import { useLiveStatus } from '../hooks/useLiveStatus';
 import { isCriticalLiveEvent } from '../utils/eventPresentation';
@@ -87,7 +86,6 @@ function toastVariant(type: LiveEvent['type']): LiveToast['variant'] {
 
 export function LiveProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
-  const [streamToken, setStreamToken] = useState<string | null>(() => localStorage.getItem('accessToken'));
   const [connectionState, setConnectionState] = useState<LiveConnectionState>('disconnected');
   const [notifications, dispatch] = useReducer(notificationReducer, []);
   const [recentEvents, setRecentEvents] = useState<LiveEvent[]>([]);
@@ -112,14 +110,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    const syncToken = () => setStreamToken(localStorage.getItem('accessToken'));
-    syncToken();
-    window.addEventListener(AUTH_TOKEN_REFRESHED_EVENT, syncToken);
-    return () => window.removeEventListener(AUTH_TOKEN_REFRESHED_EVENT, syncToken);
-  }, []);
-
-  useEffect(() => {
-    if (!isAuthenticated || !streamToken) {
+    if (!isAuthenticated) {
       setConnectionState('disconnected');
       return;
     }
@@ -149,7 +140,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       clearReconnect();
       setConnectionState('connecting');
-      abortStream = connectLiveStream(streamToken, {
+      abortStream = connectLiveStream('cookie', {
         onEvent: handleEvent,
         onConnected: () => {
           if (cancelled) return;
@@ -176,7 +167,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       clearReconnect();
       abortStream?.();
     };
-  }, [isAuthenticated, streamToken, handleEvent]);
+  }, [isAuthenticated, handleEvent]);
 
   const visibleNotifications = useMemo(
     () => notifications.filter((n) => !n.dismissed),

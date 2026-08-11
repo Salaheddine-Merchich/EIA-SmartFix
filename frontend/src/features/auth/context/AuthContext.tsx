@@ -4,8 +4,11 @@ import { authApi } from '@/shared/api';
 import {
   AUTH_TOKEN_REFRESHED_EVENT,
   clearAuthSession,
+  readUserProfile,
   refreshAccessToken,
+  storeUserProfile,
 } from '@/shared/api/client';
+import { clearConversationStorageForUser } from '@/features/ai-assistant/utils/conversationStorage';
 
 interface AuthContextType {
   user: AuthResponse | null;
@@ -18,50 +21,42 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-function readStoredUser(): AuthResponse | null {
-  const stored = localStorage.getItem('user');
-  return stored ? JSON.parse(stored) : null;
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthResponse | null>(() => readStoredUser());
-  const [accessToken, setAccessToken] = useState<string | null>(() => localStorage.getItem('accessToken'));
-  const [isBootstrapping, setIsBootstrapping] = useState(() => {
-    return !!localStorage.getItem('user') && !!localStorage.getItem('refreshToken');
-  });
+  const [user, setUser] = useState<AuthResponse | null>(() => readUserProfile());
+  const [sessionReady, setSessionReady] = useState(false);
+  const [isBootstrapping, setIsBootstrapping] = useState(() => !!readUserProfile());
   const loginInProgressRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
 
     async function bootstrapSession() {
-      const storedUser = readStoredUser();
-      const refreshToken = localStorage.getItem('refreshToken');
-
-      if (!storedUser || !refreshToken) {
-        if (!cancelled) setIsBootstrapping(false);
+      const storedUser = readUserProfile();
+      if (!storedUser) {
+        // Still try cookie-based refresh (page reload with cookies, empty sessionStorage)
+        const token = await refreshAccessToken();
+        if (cancelled || loginInProgressRef.current) return;
+        if (token) {
+          setUser(readUserProfile());
+          setSessionReady(true);
+        } else {
+          setUser(null);
+          setSessionReady(false);
+        }
+        setIsBootstrapping(false);
         return;
       }
 
-      // Always validate/refresh on bootstrap — do not trust a stored access token alone.
       const token = await refreshAccessToken();
       if (cancelled || loginInProgressRef.current) return;
 
       if (!token) {
-        // Concurrent login may have replaced tokens while refresh was in flight.
-        const recoveredRefresh = localStorage.getItem('refreshToken');
-        const recoveredToken = localStorage.getItem('accessToken');
-        if (recoveredToken && recoveredRefresh && recoveredRefresh !== refreshToken) {
-          setUser(readStoredUser());
-          setAccessToken(recoveredToken);
-        } else {
-          clearAuthSession();
-          setUser(null);
-          setAccessToken(null);
-        }
+        clearAuthSession();
+        setUser(null);
+        setSessionReady(false);
       } else {
-        setUser(readStoredUser());
-        setAccessToken(token);
+        setUser(readUserProfile());
+        setSessionReady(true);
       }
       setIsBootstrapping(false);
     }
@@ -73,32 +68,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const onTokenRefreshed = (event: Event) => {
-      const detail = (event as CustomEvent<{ accessToken: string }>).detail;
-      setAccessToken(detail.accessToken);
-      setUser(readStoredUser());
+    const onTokenRefreshed = () => {
+      setUser(readUserProfile());
+      setSessionReady(true);
     };
 
     window.addEventListener(AUTH_TOKEN_REFRESHED_EVENT, onTokenRefreshed);
     return () => window.removeEventListener(AUTH_TOKEN_REFRESHED_EVENT, onTokenRefreshed);
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem('user', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('user');
-    }
-  }, [user]);
-
   const login = async (email: string, password: string) => {
     loginInProgressRef.current = true;
     try {
       const data = await authApi.login(email, password);
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
-      setAccessToken(data.accessToken);
-      setUser(data);
+      storeUserProfile(data);
+      setUser(readUserProfile());
+      setSessionReady(true);
       setIsBootstrapping(false);
     } finally {
       loginInProgressRef.current = false;
@@ -106,10 +91,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    clearAuthSession();
-    setAccessToken(null);
-    setUser(null);
+    const email = user?.email;
     authApi.logout().catch(() => {});
+    if (email) {
+      clearConversationStorageForUser(email);
+    }
+    clearAuthSession();
+    setUser(null);
+    setSessionReady(false);
   };
 
   const hasRole = (...roles: Role[]) => (user ? roles.includes(user.role) : false);
@@ -121,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         hasRole,
-        isAuthenticated: !isBootstrapping && !!user && !!accessToken,
+        isAuthenticated: !isBootstrapping && !!user && sessionReady,
         isBootstrapping,
       }}
     >

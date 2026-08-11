@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { EnterpriseDrawer } from '@/design-system';
 import { AiAssistantHeader } from '../components/AiAssistantHeader';
 import { AiComposer } from '../components/AiComposer';
@@ -11,21 +12,46 @@ import { useGenerationNavigationGuard } from '../hooks/useGenerationNavigationGu
 import { ASSISTANT_LAYOUT } from '../constants/layout';
 import type { AiDiagnosticTrace } from '@/shared/types';
 
+interface AiAssistantLocationState {
+  failureId?: string;
+  equipmentId?: string;
+  prefilledDescription?: string;
+}
+
 export default function AiAssistantPage() {
+  const location = useLocation();
   const {
     messages,
     loading,
     loadingMessage,
     status,
     similarInterventions,
+    assistContext,
     sendMessage,
     cancelGeneration,
     clearConversation,
+    setAssistContext,
+    setComposerPrefill,
+    composerPrefill,
+    clearComposerPrefill,
   } = useAiConversation();
   const [traceOpen, setTraceOpen] = useState(false);
   const [activeTrace, setActiveTrace] = useState<AiDiagnosticTrace | null>(null);
 
   useGenerationNavigationGuard(loading);
+
+  useEffect(() => {
+    const state = location.state as AiAssistantLocationState | null;
+    if (!state?.failureId && !state?.equipmentId && !state?.prefilledDescription) return;
+    setAssistContext({
+      failureId: state.failureId,
+      equipmentId: state.equipmentId,
+    });
+    if (state.prefilledDescription) {
+      setComposerPrefill(state.prefilledDescription);
+    }
+    window.history.replaceState({}, document.title);
+  }, [location.state, setAssistContext, setComposerPrefill]);
 
   const lastMessageCancelled = useMemo(() => {
     const last = messages[messages.length - 1];
@@ -43,6 +69,11 @@ export default function AiAssistantPage() {
         status={status}
         onNewConversation={clearConversation}
         hasMessages={messages.length > 0}
+        contextHint={
+          assistContext.failureId || assistContext.equipmentId
+            ? 'Contexte panne actif — les suggestions seront ciblées sur cet équipement.'
+            : undefined
+        }
       />
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
@@ -66,7 +97,13 @@ export default function AiAssistantPage() {
             />
           </div>
 
-          <AiComposer loading={loading} onSend={sendMessage} onStop={cancelGeneration} />
+          <AiComposer
+            loading={loading}
+            onSend={sendMessage}
+            onStop={cancelGeneration}
+            initialValue={composerPrefill}
+            onInitialValueConsumed={clearComposerPrefill}
+          />
         </section>
 
         <div className={`min-h-[240px] w-full ${ASSISTANT_LAYOUT.sidePanelWidth} shrink-0`}>

@@ -1,37 +1,37 @@
 # Sécurité — EIA SmartFix
 
+## Authentification
+
+- Access JWT + refresh JWT avec `jti` persisté (`refresh_tokens`) ; logout révoque le refresh.
+- Cookies HttpOnly `eia_access` / `eia_refresh` (SameSite=Lax) ; le filtre accepte aussi `Authorization: Bearer`.
+- Le frontend n’enregistre **pas** les JWT dans `localStorage` (profil non secret en `sessionStorage` uniquement).
+- SSE / upload utilisent `credentials: 'include'`.
+
 ## JWT et Server-Sent Events
 
 Le navigateur `EventSource` ne permet pas d’envoyer un header `Authorization`.
-Le frontend utilise donc `fetch` + `ReadableStream` (`shared/api/sseFetch.ts`) avec :
+Le frontend utilise `fetch` + `ReadableStream` (`shared/api/sseFetch.ts`) avec cookies HttpOnly.
 
-```
-Authorization: Bearer <jwt>
-```
-
-pour le live monitoring (`GET /api/v1/live/events`) et le stream assist
-(`GET /api/v1/ai/assist/stream`). Le paramètre query `access_token` **n’est plus accepté**
-par [`JwtAuthenticationFilter`](../backend/src/main/java/com/ocp/eia/infrastructure/security/JwtAuthenticationFilter.java).
-
-### Risques résiduels
-
-- En cas de XSS, le token en `localStorage` reste exposé (inchangé)
-- CORS doit autoriser les origines frontend en production
+Le paramètre query `access_token` **n’est plus accepté**.
 
 ## Secrets
 
-- Profil `prod` : `JWT_SECRET`, datasource et CORS obligatoires (`application-prod.yml`)
-- Hors `dev` exclusif : secret placeholder / trop court → fail-fast au démarrage
-- Docker Compose : ne pas démarrer sans `.env` pour `JWT_SECRET` et `POSTGRES_PASSWORD`
+- Profil `prod` : `JWT_SECRET`, datasource et CORS obligatoires
+- Compose : défaut `SPRING_PROFILES_ACTIVE=prod` ; démo locale via `docker-compose.override.yml`
+- Comptes seed V4 désactivés par V20 ; profil `dev` les réactive (`DevDataInitializer`)
+- Ports Postgres / API / frontend bindés sur `127.0.0.1` ; Ollama non publié
 
-## Refresh tokens (limitation connue)
+## Documents
 
-Les refresh tokens sont des JWT signés, **sans store de révocation côté serveur**.
-Un `logout` ne fait qu’effacer les tokens côté client (`localStorage`) ; un refresh encore valide
-reste accepté jusqu’à expiration. Une blacklist / rotation persistante n’est prévue que si
-une exigence sécurité produit l’impose.
+- Lecture plant-wide pour rôles TECH/RESP/ADMIN (documenté produit CMMS mono-site)
+- Écriture / suppression : `ensureEditable` (ownership technicien)
+- Stockage : jail sous `FILE_STORAGE_PATH`, MIME sniff (magic bytes), noms sanitizés
 
 ## Swagger
 
-- Désactivé en `prod`
+- Désactivé hors profil `dev`
 - En `dev` uniquement (sécurité Spring + springdoc)
+
+## Logs
+
+- Pas de contenu de prompts / réponses LLM dans les logs (métriques de taille uniquement)

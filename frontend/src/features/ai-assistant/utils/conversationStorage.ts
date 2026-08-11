@@ -22,7 +22,7 @@ export function createConversation(): Conversation {
 export function loadConversation(key: string | null): Conversation {
   if (!key) return createConversation();
   try {
-    const raw = localStorage.getItem(key);
+    const raw = sessionStorage.getItem(key) ?? localStorage.getItem(key);
     if (!raw) return createConversation();
     const parsed = JSON.parse(raw) as Conversation;
     if (!parsed?.id || !Array.isArray(parsed.messages)) {
@@ -37,7 +37,8 @@ export function loadConversation(key: string | null): Conversation {
 export function saveConversation(key: string | null, conversation: Conversation): void {
   if (!key) return;
   try {
-    localStorage.setItem(key, JSON.stringify(conversation));
+    sessionStorage.setItem(key, JSON.stringify(conversation));
+    localStorage.removeItem(key);
   } catch {
     // Ignore quota / private mode errors
   }
@@ -45,5 +46,10 @@ export function saveConversation(key: string | null, conversation: Conversation)
 
 export function clearConversationStorage(key: string | null): void {
   if (!key) return;
+  sessionStorage.removeItem(key);
   localStorage.removeItem(key);
+}
+
+export function clearConversationStorageForUser(email: string | undefined): void {
+  clearConversationStorage(getConversationStorageKey(email));
 }

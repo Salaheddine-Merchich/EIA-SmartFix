@@ -50,32 +50,35 @@ interface AnalyticsSectionProps {
 
 
 function ChartTooltip({ active, payload, label }: {
-
   active?: boolean;
-
   payload?: { value: number; name?: string }[];
-
   label?: string;
-
 }) {
-
   if (!active || !payload?.length) return null;
-
   return (
-
-    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm">
-
-      <p className="font-medium text-slate-800">{label}</p>
-
-      <p className="mt-1 text-slate-600">{payload[0].value}</p>
-
+    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm dark:border-slate-600 dark:bg-slate-800">
+      <p className="font-medium text-slate-800 dark:text-slate-100">{label}</p>
+      <p className="mt-1 text-slate-600 dark:text-slate-300">{payload[0].value}</p>
     </div>
-
   );
-
 }
 
 
+
+function CausesChartTooltip({ active, payload }: {
+  active?: boolean;
+  payload?: { value: number; payload?: { fullName?: string; name?: string } }[];
+}) {
+  if (!active || !payload?.length) return null;
+  const item = payload[0].payload;
+  const label = item?.fullName ?? item?.name ?? '';
+  return (
+    <div className="max-w-xs rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm dark:border-slate-600 dark:bg-slate-800">
+      <p className="font-medium text-slate-800 dark:text-slate-100">{label}</p>
+      <p className="mt-1 text-slate-600 dark:text-slate-300">{payload[0].value}</p>
+    </div>
+  );
+}
 
 function formatMonthLabel(month: string): string {
 
@@ -94,6 +97,8 @@ export function AnalyticsSection({ stats }: AnalyticsSectionProps) {
   const familleData = stats.failuresByFamille.map((item) => ({
 
     name: item.famille,
+
+    fullName: item.famille,
 
     value: item.count,
 
@@ -124,13 +129,10 @@ export function AnalyticsSection({ stats }: AnalyticsSectionProps) {
 
 
   const validationData = [
-
     { name: 'Validées', value: stats.validatedInterventions },
-
     { name: 'En attente', value: stats.pendingValidations },
-
-    { name: 'Pannes ouvertes', value: stats.openFailures },
-
+    { name: 'Brouillon', value: stats.draftInterventions },
+    { name: 'Rejetées', value: stats.rejectedInterventions },
   ].filter((item) => item.value > 0);
 
 
@@ -157,15 +159,22 @@ export function AnalyticsSection({ stats }: AnalyticsSectionProps) {
 
             <ResponsiveContainer width="100%" height="100%">
 
-              <BarChart data={familleData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+              <BarChart data={familleData} margin={{ top: 8, right: 8, left: -16, bottom: 4 }}>
 
                 <CartesianGrid strokeDasharray="3 3" stroke={border} vertical={false} />
 
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: muted }} />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 11, fill: muted }}
+                  angle={-25}
+                  textAnchor="end"
+                  height={60}
+                  interval={0}
+                />
 
                 <YAxis tick={{ fontSize: 11, fill: muted }} allowDecimals={false} />
 
-                <Tooltip content={<ChartTooltip />} />
+                <Tooltip content={<CausesChartTooltip />} />
 
                 <Bar dataKey="value" radius={[6, 6, 0, 0]}>
 
@@ -215,7 +224,7 @@ export function AnalyticsSection({ stats }: AnalyticsSectionProps) {
 
                 <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11, fill: muted }} />
 
-                <Tooltip content={<ChartTooltip label={undefined} />} />
+                <Tooltip content={<CausesChartTooltip />} />
 
                 <Bar dataKey="value" fill={brand} radius={[0, 6, 6, 0]} />
 
@@ -281,7 +290,7 @@ export function AnalyticsSection({ stats }: AnalyticsSectionProps) {
 
             </ResponsiveContainer>
 
-            <ul className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <ul className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
 
               {validationData.map((item, index) => (
 
@@ -313,7 +322,7 @@ export function AnalyticsSection({ stats }: AnalyticsSectionProps) {
 
 
 
-      <DashboardPanel title="Pannes par mois" subtitle="Tendance temporelle">
+      <DashboardPanel title="Pannes par mois" subtitle="Tendance par date d'incident">
 
         {monthlyData.length === 0 ? (
 
@@ -321,7 +330,7 @@ export function AnalyticsSection({ stats }: AnalyticsSectionProps) {
 
             title="Aucune donnée disponible"
 
-            description="Les tendances mensuelles apparaîtront dès que des pannes seront enregistrées."
+            description="Les tendances mensuelles par date d'incident apparaîtront dès que des pannes seront enregistrées."
 
           />
 

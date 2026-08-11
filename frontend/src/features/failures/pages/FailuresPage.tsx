@@ -1,13 +1,15 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   EnterpriseBadge,
   EnterpriseButton,
   EnterpriseCard,
+  EnterpriseEmptyState,
   EnterpriseErrorState,
   EnterpriseInput,
   EnterpriseModal,
   EnterprisePageHeader,
+  EnterprisePagination,
   EnterpriseSearch,
   EnterpriseSelect,
   EnterpriseSkeletonTable,
@@ -30,12 +32,26 @@ export default function FailuresPage() {
   const { user } = useAuth();
   const { loading, execute } = useMutationFeedback();
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
   const formModal = useDisclosure();
+  const pageSize = 20;
 
-  const { failures, isLoading, isError, refetch, createFailure } = useFailuresList({
+  useEffect(() => {
+    setPage(0);
+  }, [search]);
+
+  const {
+    failures,
+    totalElements,
+    totalPages,
+    isLoading,
+    isError,
+    refetch,
+    createFailure,
+  } = useFailuresList({
     search,
-    page: 0,
-    size: 50,
+    page,
+    size: pageSize,
   });
   const { equipment } = useEquipmentList({ page: 0, size: 100 });
   const { data: responsables = [] } = useAssignableUsers();
@@ -105,6 +121,13 @@ export default function FailuresPage() {
         onChange={(e) => setSearch(e.target.value)}
       />
 
+      {!isLoading && !isError && totalElements > 0 && (
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          {totalElements} panne{totalElements > 1 ? 's' : ''} au total
+          {totalPages > 1 ? ` — page ${page + 1} / ${totalPages}` : ''}
+        </p>
+      )}
+
       <EnterpriseCard padding="none">
         {isLoading && <EnterpriseSkeletonTable rows={6} />}
         {isError && (
@@ -114,11 +137,27 @@ export default function FailuresPage() {
             onRetry={() => void refetch()}
           />
         )}
-        {!isLoading && !isError && (
+        {!isLoading && !isError && failures.length === 0 && (
+          <div className="p-6">
+            <EnterpriseEmptyState
+            title="Aucune panne enregistrée"
+            description={
+              search
+                ? 'Aucun résultat pour cette recherche. Effacez le filtre ou déclarez une nouvelle panne.'
+                : 'Déclarez une panne ou restaurez une sauvegarde PostgreSQL (voir README — Persistance des données).'
+            }
+            action={
+              !search ? (
+                <EnterpriseButton onClick={openCreateModal}>Déclarer une panne</EnterpriseButton>
+              ) : undefined
+            }
+          />
+          </div>
+        )}
+        {!isLoading && !isError && failures.length > 0 && (
           <EnterpriseTable
             data={failures}
             keyExtractor={(f) => f.id}
-            emptyMessage="Aucune panne enregistrée"
             columns={[
               {
                 key: 'equipment',
@@ -180,6 +219,15 @@ export default function FailuresPage() {
               },
             ]}
           />
+        )}
+        {!isLoading && !isError && totalPages > 1 && (
+          <div className="border-t border-slate-100 p-4 dark:border-slate-800">
+            <EnterprisePagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+            />
+          </div>
         )}
       </EnterpriseCard>
 

@@ -46,6 +46,18 @@ describe('mapAssistError', () => {
     expect(result.kind).toBe('auth');
   });
 
+  it('maps 504 gateway timeout to timeout', () => {
+    const result = mapAssistError(axiosError({ status: 504 }));
+    expect(result.kind).toBe('timeout');
+    expect(result.message).toContain('trop de temps');
+  });
+
+  it('maps 502 bad gateway to timeout', () => {
+    const result = mapAssistError(axiosError({ status: 502 }));
+    expect(result.kind).toBe('timeout');
+    expect(result.message).toContain('proxy');
+  });
+
   it('maps ollama unavailable message', () => {
     const result = mapAssistError(
       axiosError({ status: 500, data: { message: 'Ollama indisponible' } }),

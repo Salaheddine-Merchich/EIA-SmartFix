@@ -6,6 +6,11 @@ const stats = {
   openFailures: 4,
   validatedInterventions: 8,
   pendingValidations: 2,
+  draftInterventions: 1,
+  rejectedInterventions: 1,
+  knowledgeDocuments: 13,
+  activeKnowledgeDocuments: 11,
+  indexedInterventions: 26,
   mttrMinutes: 45,
   mtbfHours: 120,
   topFailingEquipment: [{ equipmentId: '1', code: 'EQ-1', designation: 'Pompe', failureCount: 3 }],
@@ -38,6 +43,8 @@ describe('buildKpiCards', () => {
     const cards = buildKpiCards(stats, 25, 2);
     expect(cards[0].hint).toContain('2');
     expect(cards[0].hint).toContain('validation');
-    expect(cards[3].hint).toContain('indexables RAG');
+    expect(cards[3].value).toBe('11');
+    expect(cards[3].hint).toContain('guides techniques');
+    expect(cards[3].hint).toContain('interventions indexées');
   });
 });

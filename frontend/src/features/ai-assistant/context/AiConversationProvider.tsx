@@ -15,6 +15,7 @@ import { useConversationPersistence } from '../hooks/useConversationPersistence'
 import { useLoadingStatusMessage } from '../hooks/useLoadingStatusMessage';
 import type {
   AssistantStatus,
+  AssistContext,
   Conversation,
   ConversationMessage,
   SimilarInterventionItem,
@@ -29,9 +30,14 @@ interface AiConversationContextValue {
   loadingMessage: string;
   status: AssistantStatus;
   similarInterventions: SimilarInterventionItem[];
+  assistContext: AssistContext;
+  composerPrefill: string;
   sendMessage: (rawContent: string) => Promise<void>;
   cancelGeneration: () => void;
   clearConversation: () => void;
+  setAssistContext: (context: AssistContext) => void;
+  setComposerPrefill: (value: string) => void;
+  clearComposerPrefill: () => void;
 }
 
 const AiConversationContext = createContext<AiConversationContextValue | null>(null);
@@ -40,6 +46,8 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const storageKey = getConversationStorageKey(user?.email);
   const [status, setStatus] = useState<AssistantStatus>('online');
+  const [assistContext, setAssistContext] = useState<AssistContext>({});
+  const [composerPrefill, setComposerPrefill] = useState('');
 
   const { conversation, setConversation, resetConversation } =
     useConversationPersistence(storageKey);
@@ -47,6 +55,7 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
   const { loading, setLoading, abortActive, sendMessage, cancelGeneration } = useAssistSend({
     setConversation,
     setStatus,
+    assistContext,
   });
 
   const loadingMessage = useLoadingStatusMessage(loading);
@@ -68,7 +77,13 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
     setLoading(false);
     resetConversation();
     setStatus('online');
+    setAssistContext({});
+    setComposerPrefill('');
   }, [abortActive, resetConversation, setLoading]);
+
+  const clearComposerPrefill = useCallback(() => {
+    setComposerPrefill('');
+  }, []);
 
   const similarInterventions = useMemo(
     () => getSimilarInterventions(conversation.messages),
@@ -83,9 +98,14 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
       loadingMessage,
       status,
       similarInterventions,
+      assistContext,
+      composerPrefill,
       sendMessage,
       cancelGeneration,
       clearConversation,
+      setAssistContext,
+      setComposerPrefill,
+      clearComposerPrefill,
     }),
     [
       conversation,
@@ -93,9 +113,12 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
       loadingMessage,
       status,
       similarInterventions,
+      assistContext,
+      composerPrefill,
       sendMessage,
       cancelGeneration,
       clearConversation,
+      clearComposerPrefill,
     ],
   );
 

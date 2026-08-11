@@ -20,6 +20,8 @@ public interface KnowledgeDocumentRepository extends JpaRepository<KnowledgeDocu
     @Query("SELECT k FROM KnowledgeDocument k WHERE k.active = true AND k.documentType = :documentType")
     List<KnowledgeDocument> findByDocumentType(@Param("documentType") KnowledgeDocument.DocumentType documentType);
 
+    long countByActiveTrue();
+
     /**
      * Full-text search in knowledge documents using PostgreSQL FTS
      */

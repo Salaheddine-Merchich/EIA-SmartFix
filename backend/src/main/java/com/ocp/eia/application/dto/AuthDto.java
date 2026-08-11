@@ -22,7 +22,8 @@ public final class AuthDto {
             String email
     ) {}
 
+    /** refreshToken optional when sent via HttpOnly cookie. */
     public record RefreshTokenRequest(
-            @NotBlank @Size(max = 2000) String refreshToken
+            @Size(max = 2000) String refreshToken
     ) {}
 }

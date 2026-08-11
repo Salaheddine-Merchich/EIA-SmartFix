@@ -6,11 +6,25 @@ interface AiComposerProps {
   loading: boolean;
   onSend: (value: string) => void;
   onStop: () => void;
+  initialValue?: string;
+  onInitialValueConsumed?: () => void;
 }
 
-function AiComposerComponent({ loading, onSend, onStop }: AiComposerProps) {
+function AiComposerComponent({
+  loading,
+  onSend,
+  onStop,
+  initialValue = '',
+  onInitialValueConsumed,
+}: AiComposerProps) {
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!initialValue) return;
+    setValue(initialValue);
+    onInitialValueConsumed?.();
+  }, [initialValue, onInitialValueConsumed]);
 
   const canSend = value.trim().length > 0 && !loading;
   const maxChars = 1000;

@@ -25,6 +25,9 @@ export function useFailuresList({ search = '', page = 0, size = 50 }: FailuresLi
 
   return {
     failures: listQuery.data?.content ?? [],
+    totalElements: listQuery.data?.totalElements ?? 0,
+    totalPages: listQuery.data?.totalPages ?? 0,
+    page: listQuery.data?.page ?? page,
     isLoading: listQuery.isLoading,
     isError: listQuery.isError,
     refetch: listQuery.refetch,

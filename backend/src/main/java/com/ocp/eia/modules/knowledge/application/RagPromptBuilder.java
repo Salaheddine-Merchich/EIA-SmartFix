@@ -82,12 +82,9 @@ public class RagPromptBuilder {
         for (int i = 0; i < similar.size(); i++) {
             SimilarIntervention row = similar.get(i);
             sb.append("--- Intervention ").append(i + 1).append(" (équipement: ").append(row.equipmentCode())
-                    .append(", similarité: ").append(String.format("%.2f", row.similarity())).append(") ---\n");
+                    .append(") ---\n");
             if (row.symptomes() != null) {
                 sb.append("Symptômes: ").append(truncateField(row.symptomes())).append("\n");
-            }
-            if (row.causeRacine() != null) {
-                sb.append("Cause: ").append(truncateField(row.causeRacine())).append("\n");
             }
             if (row.actionsCorrectives() != null) {
                 sb.append("Actions: ").append(truncateField(row.actionsCorrectives())).append("\n");
@@ -100,21 +97,19 @@ public class RagPromptBuilder {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < knowledgeDocuments.size(); i++) {
             SimilarKnowledgeDocument doc = knowledgeDocuments.get(i);
-            sb.append("--- Document ").append(i + 1).append(" (").append(doc.documentType())
-                    .append(", pertinence: ").append(String.format("%.2f", doc.similarity())).append(") ---\n");
-            sb.append("Source: ").append(doc.source()).append("\n");
+            sb.append("--- Document ").append(i + 1).append(" (").append(doc.documentType()).append(") ---\n");
             if (doc.equipmentFamily() != null) {
                 sb.append("Famille: ").append(doc.equipmentFamily()).append("\n");
             }
-            sb.append("Contenu: ").append(truncateField(doc.contentExcerpt())).append("\n");
+            sb.append("Extrait: ").append(truncateField(doc.contentExcerpt())).append("\n");
         }
         return sb.toString();
     }
 
     private String truncateField(String field) {
-        if (field == null || field.length() <= 250) {
+        if (field == null || field.length() <= 120) {
             return field;
         }
-        return field.substring(0, 247) + "...";
+        return field.substring(0, 117) + "...";
     }
 }

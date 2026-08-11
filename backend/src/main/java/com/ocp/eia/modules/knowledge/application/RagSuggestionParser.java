@@ -164,11 +164,29 @@ public class RagSuggestionParser {
     }
 
     private String extractJson(String response) {
-        int start = response.indexOf('{');
-        int end = response.lastIndexOf('}');
-        if (start >= 0 && end > start) {
-            return response.substring(start, end + 1);
+        if (response == null || response.isBlank()) {
+            return "{}";
         }
-        return response;
+
+        String trimmed = response.trim();
+
+        // Strip markdown code fences: ```json ... ``` or ``` ... ```
+        if (trimmed.startsWith("```")) {
+            int firstNewline = trimmed.indexOf('\n');
+            if (firstNewline > 0) {
+                trimmed = trimmed.substring(firstNewline + 1);
+            }
+            int fenceEnd = trimmed.lastIndexOf("```");
+            if (fenceEnd >= 0) {
+                trimmed = trimmed.substring(0, fenceEnd).trim();
+            }
+        }
+
+        int start = trimmed.indexOf('{');
+        int end = trimmed.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            return trimmed.substring(start, end + 1);
+        }
+        return trimmed;
     }
 }

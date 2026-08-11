@@ -94,6 +94,11 @@ export interface DashboardStats {
   openFailures: number;
   validatedInterventions: number;
   pendingValidations: number;
+  draftInterventions: number;
+  rejectedInterventions: number;
+  knowledgeDocuments: number;
+  activeKnowledgeDocuments: number;
+  indexedInterventions: number;
   mttrMinutes?: number;
   mtbfHours?: number;
   topFailingEquipment: { equipmentId: string; code: string; designation: string; failureCount: number }[];

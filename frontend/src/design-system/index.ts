@@ -13,6 +13,7 @@ export * from './components/EnterpriseInput';
 export * from './components/EnterprisePanel';
 export * from './components/EnterpriseTable';
 export * from './components/EnterpriseEmptyState';
+export * from './components/EnterprisePagination';
 export * from './components/EnterpriseErrorState';
 export * from './components/EnterpriseSkeleton';
 export * from './components/EnterpriseSearch';

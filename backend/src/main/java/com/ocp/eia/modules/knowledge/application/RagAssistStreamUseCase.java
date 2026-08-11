@@ -7,6 +7,7 @@ import com.ocp.eia.application.dto.AiDto.AiAssistResponse;
 import com.ocp.eia.application.dto.AiDto.AiSuggestions;
 import com.ocp.eia.config.AppProperties;
 import com.ocp.eia.modules.knowledge.application.RagRetrievalService.RetrievalOutcome;
+import com.ocp.eia.modules.knowledge.application.RagSuggestionService.SuggestionResult;
 import com.ocp.eia.modules.knowledge.domain.model.AiDiagnosticTrace;
 import com.ocp.eia.modules.knowledge.domain.port.LlmProviderPort;
 import com.ocp.eia.modules.knowledge.infrastructure.observability.RagObservabilityService;
@@ -38,6 +39,7 @@ public class RagAssistStreamUseCase {
     );
 
     private final RagRetrievalService ragRetrievalService;
+    private final RagSuggestionService ragSuggestionService;
     private final RagPromptBuilder ragPromptBuilder;
     private final RagSuggestionParser ragSuggestionParser;
     private final LlmProviderPort llmProvider;
@@ -55,7 +57,7 @@ public class RagAssistStreamUseCase {
         String description = request.description() != null ? request.description() : "";
         log.info("Démarrage assistance streaming RAG: queryLength={}", description.length());
         if (log.isDebugEnabled()) {
-            log.debug("RAG stream query snippet: {}", truncateForLog(description, 200));
+            log.debug("RAG stream query received: chars={}", description != null ? description.length() : 0);
         }
 
         Duration streamTimeout = DurationParse.of(appProperties.getAi().getRag().getPerformance().getLlmTimeout());
@@ -109,6 +111,27 @@ public class RagAssistStreamUseCase {
                             return;
                         }
 
+                        if (ragSuggestionService.shouldUseFastPath(retrieval.relevant())) {
+                            sink.next(ServerSentEvent.<String>builder()
+                                    .event("status")
+                                    .data("Réponse basée sur l'historique (mode rapide)")
+                                    .build());
+
+                            SuggestionResult fastPathResult = ragSuggestionService.generateSuggestions(
+                                    request.description(),
+                                    retrieval.relevant(),
+                                    retrieval.knowledgeDocuments()
+                            );
+                            recordSuccessOnce(recordedOutcome);
+                            sink.next(ServerSentEvent.<String>builder()
+                                    .event("complete")
+                                    .data(serializeResponse(buildResponse(
+                                            request, retrieval, fastPathResult.suggestions(), fastPathResult.llmDurationMs())))
+                                    .build());
+                            sink.complete();
+                            return;
+                        }
+
                         sink.next(ServerSentEvent.<String>builder()
                                 .event("status")
                                 .data("Génération de l'analyse...")
@@ -128,7 +151,7 @@ public class RagAssistStreamUseCase {
                                 retrieval.knowledgeDocuments().size()
                         );
                         if (log.isDebugEnabled()) {
-                            log.debug("LLM stream userPrompt snippet: {}", truncateForLog(userPrompt, 200));
+                            log.debug("LLM stream userPrompt prepared: chars={}", userPrompt.length());
                         }
                         StringBuilder responseBuffer = new StringBuilder();
                         long llmStart = System.nanoTime();
@@ -149,10 +172,6 @@ public class RagAssistStreamUseCase {
                                             responseBuffer.length(),
                                             llmDurationMs
                                     );
-                                    if (log.isDebugEnabled()) {
-                                        log.debug("LLM stream response snippet: {}",
-                                                truncateForLog(responseBuffer.toString(), 200));
-                                    }
                                     try {
                                         AiSuggestions suggestions = ragSuggestionParser.parse(responseBuffer.toString());
                                         recordSuccessOnce(recordedOutcome);
@@ -197,7 +216,7 @@ public class RagAssistStreamUseCase {
 
                                     sink.next(ServerSentEvent.<String>builder()
                                             .event("error")
-                                            .data("Erreur LLM: " + error.getMessage())
+                                            .data("Service IA temporairement indisponible")
                                             .build());
 
                                     sink.next(ServerSentEvent.<String>builder()

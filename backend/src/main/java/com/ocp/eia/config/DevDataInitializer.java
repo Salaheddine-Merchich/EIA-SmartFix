@@ -34,7 +34,9 @@ public class DevDataInitializer {
     private void updatePassword(String email, String hash) {
         userRepository.findByEmail(email).ifPresent(user -> {
             user.setPasswordHash(hash);
+            user.setActif(true);
             userRepository.save(user);
         });
     }
 }
+

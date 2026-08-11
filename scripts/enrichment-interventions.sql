@@ -77,7 +77,8 @@ VALUES
      (SELECT id FROM users WHERE email = 'responsable@ocp.ma'),
      '2026-07-22 14:20:00',
      'Sonde fonctionnelle, prévoir remplacement annuel'
-    );
+    )
+ON CONFLICT (id) DO NOTHING;
 
 -- Interventions Automatisme (5 interventions)
 INSERT INTO interventions (id, failure_id, technicien_id, description, symptomes, cause_racine, analyse_technique, actions_correctives, pieces_remplacees, duree_arret_minutes, temps_intervention_minutes, statut_validation, validateur_id, date_validation, commentaire_validation)  
@@ -155,7 +156,8 @@ VALUES
      (SELECT id FROM users WHERE email = 'kamal@ocp.ma'),
      '2026-07-30 16:15:00',
      'Onduleur stable, moins de basculements bypass'
-    );
+    )
+ON CONFLICT (id) DO NOTHING;
 
 -- Interventions Mécanique (4 interventions)
 INSERT INTO interventions (id, failure_id, technicien_id, description, symptomes, cause_racine, analyse_technique, actions_correctives, pieces_remplacees, duree_arret_minutes, temps_intervention_minutes, statut_validation, validateur_id, date_validation, commentaire_validation)
@@ -218,7 +220,8 @@ VALUES
      (SELECT id FROM users WHERE email = 'kamal@ocp.ma'),
      '2026-08-03 19:30:00',
      'Courroie bien tendue, prévoir remplacement poulie usée'
-    );
+    )
+ON CONFLICT (id) DO NOTHING;
 
 -- Interventions Électricité (4 interventions)
 INSERT INTO interventions (id, failure_id, technicien_id, description, symptomes, cause_racine, analyse_technique, actions_correctives, pieces_remplacees, duree_arret_minutes, temps_intervention_minutes, statut_validation, validateur_id, date_validation, commentaire_validation)
@@ -281,4 +284,5 @@ VALUES
      (SELECT id FROM users WHERE email = 'kamal@ocp.ma'),
      '2026-08-04 20:45:00',
      'THD réduit à 3.2%, courant neutre normalisé'  
-    );
+    )
+ON CONFLICT (id) DO NOTHING;

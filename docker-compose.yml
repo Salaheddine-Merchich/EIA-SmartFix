@@ -6,8 +6,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-eia_smartfix}
       POSTGRES_USER: ${POSTGRES_USER:-eia_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    # Bind localhost only — not LAN. Override for remote DB clients if needed.
     ports:
-      - "15432:5432"  # 5433 souvent bloqué par Hyper-V sur Windows
+      - "127.0.0.1:15432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,22 +23,27 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      # When compose --profile ai is used, wait for Ollama before starting the API.
+      ollama:
+        condition: service_started
+        required: false
     environment:
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://postgres:5432/eia_smartfix}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-eia_user}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:?Set SPRING_DATASOURCE_PASSWORD in .env}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (min 32 chars)}
-      JWT_ACCESS_EXPIRATION_MS: ${JWT_ACCESS_EXPIRATION_MS:-1800000}
-      JWT_REFRESH_EXPIRATION_MS: ${JWT_REFRESH_EXPIRATION_MS:-604800000}
+      JWT_ACCESS_EXPIRATION_MS: ${JWT_ACCESS_EXPIRATION_MS:-900000}
+      JWT_REFRESH_EXPIRATION_MS: ${JWT_REFRESH_EXPIRATION_MS:-86400000}
       FILE_STORAGE_PATH: ${FILE_STORAGE_PATH:-/data/documents}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:80}
-      # Knowledge/RAG off unless AI profile is used (see ollama service + README)
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:80,http://127.0.0.1:80}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      # Default prod-safe. Local demo: copy docker-compose.override.example.yml → docker-compose.override.yml
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       KNOWLEDGE_ENABLED: ${KNOWLEDGE_ENABLED:-false}
       KNOWLEDGE_PROVIDER: ${KNOWLEDGE_PROVIDER:-ollama}
+      APP_COOKIE_SECURE: ${APP_COOKIE_SECURE:-false}
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     volumes:
       - document_data:/data/documents
 
@@ -47,17 +53,15 @@ services:
     depends_on:
       - backend
     ports:
-      - "80:80"
+      - "127.0.0.1:80:80"
 
   # Start with: docker compose --profile ai up -d
-  # and set SPRING_PROFILES_ACTIVE=dev,ai KNOWLEDGE_ENABLED=true
+  # Ollama stays on the Docker network only (not published to the host).
   ollama:
     image: ollama/ollama:latest
     container_name: eia-ollama
     profiles:
       - ai
-    ports:
-      - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
 

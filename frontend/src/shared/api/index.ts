@@ -49,8 +49,12 @@ export const failuresApi = {
 };
 
 export const interventionsApi = {
-  list: (failureId: string) =>
-    api.get<PageResponse<Intervention>>('/api/v1/interventions', { params: { failureId } }).then((r) => r.data),
+  list: (failureId: string, params?: { page?: number; size?: number }) =>
+    api
+      .get<PageResponse<Intervention>>('/api/v1/interventions', {
+        params: { failureId, page: params?.page ?? 0, size: params?.size ?? 20 },
+      })
+      .then((r) => r.data),
   get: (id: string) => api.get<Intervention>(`/api/v1/interventions/${id}`).then((r) => r.data),
   create: (data: Partial<Intervention>) => api.post<Intervention>('/api/v1/interventions', data).then((r) => r.data),
   update: (id: string, data: Partial<Intervention>) => api.put<Intervention>(`/api/v1/interventions/${id}`, data).then((r) => r.data),
@@ -60,17 +64,13 @@ export const interventionsApi = {
   uploadDocument: async (id: string, file: File) => {
     const url = `${getApiBaseUrl()}/api/v1/interventions/${id}/documents`;
 
-    const send = async (accessToken: string | null) => {
+    const send = async () => {
       const form = new FormData();
       form.append('file', file);
-      const headers: Record<string, string> = {};
-      if (accessToken) {
-        headers.Authorization = `Bearer ${accessToken}`;
-      }
-      return fetch(url, { method: 'POST', headers, body: form });
+      return fetch(url, { method: 'POST', body: form, credentials: 'include' });
     };
 
-    let response = await send(localStorage.getItem('accessToken'));
+    let response = await send();
 
     if (response.status === 401 || response.status === 403) {
       const newToken = await refreshAccessToken();
@@ -79,7 +79,7 @@ export const interventionsApi = {
         window.location.href = '/login';
         throw createApiError(response.status, { message: 'Session expirée.' }, response.statusText);
       }
-      response = await send(newToken);
+      response = await send();
     }
 
     const data = await response.json().catch(() => ({}));
@@ -149,7 +149,7 @@ export const analyticsApi = {
     api.post<RecurringDefectsAnalysis>(
       '/api/v1/analytics/recurring-defects/analyze',
       null,
-      { params: { limit }, timeout: 120_000 },
+      { params: { limit }, timeout: 200_000 },
     ).then((r) => r.data),
 };
 
@@ -186,7 +186,7 @@ export const aiApi = {
       .post<AiAssistResponse>(
         '/api/v1/ai/assist',
         { description, failureId, equipmentId, topK },
-        { timeout: 120_000, signal },
+        { timeout: 200_000, signal },
       )
       .then((r) => r.data);
   },

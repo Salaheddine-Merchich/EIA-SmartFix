@@ -2,6 +2,7 @@ package com.ocp.eia.presentation.validation;
 
 import com.ocp.eia.config.AppProperties;
 import com.ocp.eia.config.SecurityConfig;
+import com.ocp.eia.infrastructure.security.AuthCookieService;
 import com.ocp.eia.infrastructure.security.CustomUserDetailsService;
 import com.ocp.eia.infrastructure.security.JwtAuthenticationFilter;
 import com.ocp.eia.infrastructure.security.JwtService;
@@ -12,6 +13,7 @@ import com.ocp.eia.modules.iam.application.DeleteUserUseCase;
 import com.ocp.eia.modules.iam.application.FindUserByIdUseCase;
 import com.ocp.eia.modules.iam.application.ListUsersUseCase;
 import com.ocp.eia.modules.iam.application.LoginUseCase;
+import com.ocp.eia.modules.iam.application.LogoutUseCase;
 import com.ocp.eia.modules.iam.application.RefreshTokenUseCase;
 import com.ocp.eia.modules.iam.application.UpdateUserUseCase;
 import com.ocp.eia.modules.maintenance.application.CreateFailureUseCase;
@@ -61,6 +63,8 @@ class ValidationWebMvcTest {
 
     @MockBean private LoginUseCase loginUseCase;
     @MockBean private RefreshTokenUseCase refreshTokenUseCase;
+    @MockBean private LogoutUseCase logoutUseCase;
+    @MockBean private AuthCookieService authCookieService;
 
     @MockBean private ListFailuresUseCase listFailuresUseCase;
     @MockBean private FindFailureByIdUseCase findFailureByIdUseCase;

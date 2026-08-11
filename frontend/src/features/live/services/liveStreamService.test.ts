@@ -56,9 +56,7 @@ describe('liveStreamService', () => {
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/v1/live/events'),
       expect.objectContaining({
-        headers: expect.objectContaining({
-          Authorization: 'Bearer token',
-        }),
+        credentials: 'include',
       }),
     );
     abort();

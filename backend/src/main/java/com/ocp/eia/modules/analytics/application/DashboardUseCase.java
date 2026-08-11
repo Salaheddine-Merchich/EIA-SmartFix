@@ -6,6 +6,7 @@ import com.ocp.eia.domain.model.StatutValidation;
 import com.ocp.eia.domain.repository.FailureRepository;
 import com.ocp.eia.domain.repository.InterventionRepository;
 import com.ocp.eia.modules.knowledge.application.AiDiagnosticStatsService;
+import com.ocp.eia.modules.knowledge.domain.repository.KnowledgeDocumentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -20,8 +21,28 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class DashboardUseCase {
 
+    static final String FAILURES_BY_MONTH_SQL = """
+            WITH bounds AS (
+                SELECT date_trunc('month', MIN(date_heure)) AS start_month,
+                       date_trunc('month', MAX(date_heure)) AS end_month
+                FROM failures
+            ),
+            months AS (
+                SELECT generate_series(start_month, end_month, interval '1 month') AS month
+                FROM bounds
+                WHERE start_month IS NOT NULL
+            )
+            SELECT TO_CHAR(m.month, 'YYYY-MM') AS month,
+                   COALESCE(COUNT(f.id), 0) AS cnt
+            FROM months m
+            LEFT JOIN failures f ON date_trunc('month', f.date_heure) = m.month
+            GROUP BY m.month
+            ORDER BY m.month
+            """;
+
     private final FailureRepository failureRepository;
     private final InterventionRepository interventionRepository;
+    private final KnowledgeDocumentRepository knowledgeDocumentRepository;
     private final JdbcTemplate jdbcTemplate;
     private final ObjectProvider<AiDiagnosticStatsService> aiDiagnosticStatsService;
 
@@ -31,6 +52,11 @@ public class DashboardUseCase {
                 + failureRepository.countByStatut(StatutPanne.EN_COURS);
         long validatedInterventions = interventionRepository.countByStatutValidation(StatutValidation.VALIDEE);
         long pendingValidations = interventionRepository.countByStatutValidation(StatutValidation.SOUMISE);
+        long draftInterventions = interventionRepository.countByStatutValidation(StatutValidation.BROUILLON);
+        long rejectedInterventions = interventionRepository.countByStatutValidation(StatutValidation.REJETEE);
+        long knowledgeDocuments = knowledgeDocumentRepository.count();
+        long activeKnowledgeDocuments = knowledgeDocumentRepository.countByActiveTrue();
+        long indexedInterventions = countIndexedInterventions();
 
         Double mttr = interventionRepository.calculateMttr();
         Double mtbf = calculateMtbf();
@@ -52,16 +78,7 @@ public class DashboardUseCase {
                 .map(row -> new FamilleItem((String) row[0], ((Number) row[1]).longValue()))
                 .toList();
 
-        List<MonthlyTrendItem> byMonth = jdbcTemplate.query("""
-                SELECT TO_CHAR(date_trunc('month', date_heure), 'YYYY-MM') AS month,
-                       COUNT(*) AS cnt
-                FROM failures
-                GROUP BY date_trunc('month', date_heure)
-                ORDER BY date_trunc('month', date_heure)
-                """, (rs, rowNum) -> new MonthlyTrendItem(
-                rs.getString("month"),
-                rs.getLong("cnt")
-        ));
+        List<MonthlyTrendItem> byMonth = fetchFailuresByMonth();
 
         AiDiagnosticStatsService statsService = aiDiagnosticStatsService.getIfAvailable();
         AiReliabilityStats aiReliability = statsService != null
@@ -73,6 +90,11 @@ public class DashboardUseCase {
                 openFailures,
                 validatedInterventions,
                 pendingValidations,
+                draftInterventions,
+                rejectedInterventions,
+                knowledgeDocuments,
+                activeKnowledgeDocuments,
+                indexedInterventions,
                 mttr,
                 mtbf,
                 topEquipment,
@@ -81,6 +103,22 @@ public class DashboardUseCase {
                 byMonth,
                 aiReliability
         );
+    }
+
+    List<MonthlyTrendItem> fetchFailuresByMonth() {
+        if (failureRepository.count() == 0) {
+            return List.of();
+        }
+        return jdbcTemplate.query(FAILURES_BY_MONTH_SQL, (rs, rowNum) -> new MonthlyTrendItem(
+                rs.getString("month"),
+                rs.getLong("cnt")
+        ));
+    }
+
+    private long countIndexedInterventions() {
+        Long count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM intervention_embeddings", Long.class);
+        return count != null ? count : 0L;
     }
 
     private Double calculateMtbf() {

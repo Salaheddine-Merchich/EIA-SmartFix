@@ -44,10 +44,26 @@ export function mapAssistError(error: unknown): AssistError {
       };
     }
 
-    if (status === 503 || status === 502 || looksLikeOllamaUnavailable(bodyMessage)) {
+    if (status === 504 || status === 408) {
+      return {
+        kind: 'timeout',
+        message:
+          'Le modèle IA met trop de temps à répondre. Attendez la fin de la génération ou réessayez dans quelques instants.',
+      };
+    }
+
+    if (status === 503 || looksLikeOllamaUnavailable(bodyMessage)) {
       return {
         kind: 'ollama',
         message: 'L\'assistance IA est temporairement indisponible (service Ollama). Réessayez ultérieurement ou poursuivez le diagnostic manuellement.',
+      };
+    }
+
+    if (status === 502) {
+      return {
+        kind: 'timeout',
+        message:
+          'Le proxy a interrompu la requête avant la réponse IA. Réessayez — la première génération peut prendre jusqu\'à 90 secondes.',
       };
     }
 

@@ -15,6 +15,8 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -27,13 +29,16 @@ class LoginUseCaseTest {
     @Mock private AuthenticationManager authenticationManager;
     @Mock private JwtService jwtService;
     @Mock private CustomUserDetailsService userDetailsService;
+    @Mock private RefreshTokenService refreshTokenService;
 
     @InjectMocks private LoginUseCase useCase;
 
     @Test
     void execute_returnsAuthResponseWithTokens() {
         LoginRequest request = new LoginRequest("admin@ocp.ma", "Password123!");
+        UUID userId = UUID.randomUUID();
         User user = User.builder()
+                .id(userId)
                 .email("admin@ocp.ma")
                 .nomPrenom("Admin OCP")
                 .role(Role.ADMIN)
@@ -52,8 +57,7 @@ class LoginUseCaseTest {
         AuthResponse response = useCase.execute(request);
 
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
-        verify(jwtService).generateAccessToken(userDetails, "ADMIN", "Admin OCP");
-        verify(jwtService).generateRefreshToken(userDetails);
+        verify(refreshTokenService).persist("refresh-token", userId);
         assertEquals("access-token", response.accessToken());
         assertEquals("refresh-token", response.refreshToken());
         assertEquals("Bearer", response.tokenType());
@@ -65,7 +69,7 @@ class LoginUseCaseTest {
     @Test
     void execute_authenticatesWithEmailAndPassword() {
         LoginRequest request = new LoginRequest("tech@ocp.ma", "Password123!");
-        User user = User.builder().email("tech@ocp.ma").nomPrenom("Tech").role(Role.TECHNICIEN).build();
+        User user = User.builder().id(UUID.randomUUID()).email("tech@ocp.ma").nomPrenom("Tech").role(Role.TECHNICIEN).build();
         UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
                 .username("tech@ocp.ma")
                 .password("hash")

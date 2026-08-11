@@ -7,9 +7,10 @@ interface AiAssistantHeaderProps {
   status: AssistantStatus;
   onNewConversation: () => void;
   hasMessages: boolean;
+  contextHint?: string;
 }
 
-function AiAssistantHeaderComponent({ status, onNewConversation, hasMessages }: AiAssistantHeaderProps) {
+function AiAssistantHeaderComponent({ status, onNewConversation, hasMessages, contextHint }: AiAssistantHeaderProps) {
   return (
     <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
       <div
@@ -30,6 +31,9 @@ function AiAssistantHeaderComponent({ status, onNewConversation, hasMessages }: 
               Assistant IA Maintenance
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">Diagnostic assisté basé sur les interventions validées</p>
+            {contextHint && (
+              <p className="mt-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">{contextHint}</p>
+            )}
           </div>
         </div>
 

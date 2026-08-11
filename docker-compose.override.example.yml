@@ -1,0 +1,11 @@
+# Local demo override — copy to docker-compose.override.yml (gitignored):
+#   cp docker-compose.override.example.yml docker-compose.override.yml
+#
+# Enables Spring profile "dev" (Swagger, demo password reset, DEBUG logs).
+# Do NOT use this override on a shared or production host.
+
+services:
+  backend:
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      KNOWLEDGE_ENABLED: ${KNOWLEDGE_ENABLED:-false}

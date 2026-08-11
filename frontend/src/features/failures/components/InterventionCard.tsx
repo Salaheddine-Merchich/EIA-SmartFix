@@ -7,15 +7,8 @@ import {
 } from '@/design-system';
 import type { Intervention } from '@/shared/types';
 import { DetailField } from './DetailField';
-
-const INTERVENTION_FIELD_LABELS: Record<string, string> = {
-  description: 'Description détaillée',
-  symptomes: 'Symptômes',
-  causeRacine: 'Cause racine',
-  analyseTechnique: 'Analyse technique',
-  actionsCorrectives: 'Actions correctives',
-  piecesRemplacees: 'Pièces remplacées',
-};
+import { INTERVENTION_FIELD_LABELS } from './InterventionFormFields';
+import { InterventionDocumentsSection } from './InterventionDocumentsSection';
 
 export interface InterventionCardProps {
   item: Intervention;
@@ -24,6 +17,10 @@ export interface InterventionCardProps {
   onSubmit: (id: string) => void;
   onValidate: (id: string, approved: boolean) => void;
   onExportPdf: (id: string) => void;
+  onEdit?: (item: Intervention) => void;
+  onUploadDocument?: (interventionId: string, file: File) => void;
+  onDownloadDocument?: (interventionId: string, documentId: string, filename: string) => void;
+  onDeleteDocument?: (interventionId: string, documentId: string) => void;
   isLast?: boolean;
 }
 
@@ -34,8 +31,15 @@ export function InterventionCard({
   onSubmit,
   onValidate,
   onExportPdf,
+  onEdit,
+  onUploadDocument,
+  onDownloadDocument,
+  onDeleteDocument,
   isLast = false,
 }: InterventionCardProps) {
+  const canEdit = item.statutValidation === 'BROUILLON' || item.statutValidation === 'REJETEE';
+  const canManageDocuments = canEdit;
+
   return (
     <div className="relative pl-8">
       <span
@@ -89,6 +93,17 @@ export function InterventionCard({
           </section>
         </div>
 
+        {onUploadDocument && onDownloadDocument && onDeleteDocument && (
+          <InterventionDocumentsSection
+            documents={item.documents ?? []}
+            canManage={canManageDocuments}
+            loading={loading}
+            onUpload={(file) => onUploadDocument(item.id, file)}
+            onDownload={(documentId, filename) => onDownloadDocument(item.id, documentId, filename)}
+            onDelete={(documentId) => onDeleteDocument(item.id, documentId)}
+          />
+        )}
+
         {(item.validateurNom || item.dateValidation || item.commentaireValidation) && (
           <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 text-sm dark:border-emerald-900/50 dark:bg-emerald-950/20">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
@@ -113,6 +128,12 @@ export function InterventionCard({
         )}
 
         <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
+          {canEdit && onEdit && (
+            <EnterpriseButton variant="secondary" size="sm" onClick={() => onEdit(item)} disabled={loading}>
+              Modifier
+            </EnterpriseButton>
+          )}
+
           {(item.statutValidation === 'BROUILLON' || item.statutValidation === 'REJETEE') && (
             <EnterpriseButton variant="secondary" size="sm" onClick={() => onSubmit(item.id)} disabled={loading}>
               Soumettre

@@ -24,6 +24,8 @@ app:
       top-k: 3
       embedding-dimension: 768
       similarity-threshold: 0.65
+      fast-path-enabled: ${RAG_FAST_PATH_ENABLED:true}
+      fast-path-min-similarity: ${RAG_FAST_PATH_MIN_SIMILARITY:0.85}
       hybrid-text-enabled: true
       context:
         equipment-boost: 2.0

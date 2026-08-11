@@ -10,6 +10,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -18,7 +19,9 @@ public class LoginUseCase {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
+    private final RefreshTokenService refreshTokenService;
 
+    @Transactional
     public AuthResponse execute(LoginRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.email(), request.password())
@@ -27,6 +30,7 @@ public class LoginUseCase {
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.email());
         String accessToken = jwtService.generateAccessToken(userDetails, user.getRole().name(), user.getNomPrenom());
         String refreshToken = jwtService.generateRefreshToken(userDetails);
+        refreshTokenService.persist(refreshToken, user.getId());
         return new AuthResponse(accessToken, refreshToken, "Bearer", user.getRole().name(), user.getNomPrenom(), user.getEmail());
     }
 }

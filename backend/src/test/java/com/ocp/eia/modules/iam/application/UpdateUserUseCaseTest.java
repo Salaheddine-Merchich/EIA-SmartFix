@@ -28,6 +28,7 @@ class UpdateUserUseCaseTest {
     @Mock private UserRepository userRepository;
     @Mock private UserMapper userMapper;
     @Mock private PasswordEncoder passwordEncoder;
+    @Mock private RefreshTokenService refreshTokenService;
 
     @InjectMocks private UpdateUserUseCase useCase;
 
@@ -47,6 +48,38 @@ class UpdateUserUseCaseTest {
         assertEquals("Updated", user.getNomPrenom());
         assertFalse(user.isActif());
         verify(passwordEncoder, never()).encode(any());
+        verify(refreshTokenService).revokeAllForUser(id);
+    }
+
+    @Test
+    void execute_passwordChange_revokesRefreshTokens() {
+        UUID id = UUID.randomUUID();
+        User user = User.builder().id(id).email("user@ocp.ma").role(Role.TECHNICIEN).nomPrenom("Tech").actif(true).build();
+        UserUpdateRequest request = new UserUpdateRequest("user@ocp.ma", Role.TECHNICIEN, "Tech", true, "NewPass123!");
+        UserResponse response = mock(UserResponse.class);
+
+        when(userRepository.findById(id)).thenReturn(Optional.of(user));
+        when(passwordEncoder.encode("NewPass123!")).thenReturn("new-hash");
+        when(userRepository.save(user)).thenReturn(user);
+        when(userMapper.toResponse(user)).thenReturn(response);
+
+        assertSame(response, useCase.execute(id, request));
+        verify(refreshTokenService).revokeAllForUser(id);
+    }
+
+    @Test
+    void execute_roleChangeOnly_doesNotRevokeRefreshTokens() {
+        UUID id = UUID.randomUUID();
+        User user = User.builder().id(id).email("user@ocp.ma").role(Role.TECHNICIEN).nomPrenom("Tech").actif(true).build();
+        UserUpdateRequest request = new UserUpdateRequest("user@ocp.ma", Role.RESPONSABLE_EIA, "Tech", true, null);
+        UserResponse response = mock(UserResponse.class);
+
+        when(userRepository.findById(id)).thenReturn(Optional.of(user));
+        when(userRepository.save(user)).thenReturn(user);
+        when(userMapper.toResponse(user)).thenReturn(response);
+
+        assertSame(response, useCase.execute(id, request));
+        verify(refreshTokenService, never()).revokeAllForUser(any());
     }
 
     @Test

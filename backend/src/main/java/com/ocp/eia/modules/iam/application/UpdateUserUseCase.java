@@ -22,6 +22,7 @@ public class UpdateUserUseCase {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenService refreshTokenService;
 
     public UserResponse execute(UUID id, UserUpdateRequest request) {
         User user = userRepository.findById(id)
@@ -29,13 +30,21 @@ public class UpdateUserUseCase {
         if (!user.getEmail().equals(request.email()) && userRepository.existsByEmail(request.email())) {
             throw new ConflictException("Un utilisateur avec cet email existe déjà");
         }
+        boolean wasActive = user.isActif();
+        boolean passwordChanged = request.password() != null && !request.password().isBlank();
+
         user.setEmail(request.email());
         user.setRole(request.role());
         user.setNomPrenom(request.nomPrenom());
         user.setActif(request.actif());
-        if (request.password() != null && !request.password().isBlank()) {
+        if (passwordChanged) {
             user.setPasswordHash(passwordEncoder.encode(request.password()));
         }
-        return userMapper.toResponse(userRepository.save(user));
+
+        User saved = userRepository.save(user);
+        if (passwordChanged || (wasActive && !request.actif())) {
+            refreshTokenService.revokeAllForUser(saved.getId());
+        }
+        return userMapper.toResponse(saved);
     }
 }

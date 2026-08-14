@@ -88,6 +88,23 @@ public class RagAssistStreamUseCase {
                             return;
                         }
 
+                        if (retrieval.codeNotFound()) {
+                            recordFallbackOnce(recordedOutcome);
+                            AiSuggestions unknownCodeSuggestions = ragSuggestionParser.unknownFaultCodeFallback(
+                                    retrieval.unknownFaultCode());
+                            sink.next(ServerSentEvent.<String>builder()
+                                    .event("fallback")
+                                    .data("Code défaut non trouvé dans la base de connaissances")
+                                    .build());
+                            sink.next(ServerSentEvent.<String>builder()
+                                    .event("complete")
+                                    .data(serializeResponse(buildResponse(
+                                            request, retrieval, unknownCodeSuggestions, 0L)))
+                                    .build());
+                            sink.complete();
+                            return;
+                        }
+
                         sink.next(ServerSentEvent.<String>builder()
                                 .event("context")
                                 .data(String.format("Trouvé %d interventions et %d documents techniques",

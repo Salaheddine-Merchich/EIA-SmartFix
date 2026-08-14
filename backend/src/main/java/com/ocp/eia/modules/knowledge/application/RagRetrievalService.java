@@ -2,10 +2,12 @@ package com.ocp.eia.modules.knowledge.application;
 
 import com.ocp.eia.application.dto.AiDto.AiAssistRequest;
 import com.ocp.eia.config.AppProperties;
+import com.ocp.eia.modules.knowledge.domain.model.QuerySignals;
 import com.ocp.eia.modules.knowledge.domain.model.SearchContext;
 import com.ocp.eia.modules.knowledge.domain.model.SimilarIntervention;
 import com.ocp.eia.modules.knowledge.domain.model.SimilarKnowledgeDocument;
 import com.ocp.eia.modules.knowledge.domain.port.EmbeddingProviderPort;
+import com.ocp.eia.modules.knowledge.domain.port.ExactFaultCodeSearchPort;
 import com.ocp.eia.modules.knowledge.domain.port.InterventionTextSearchPort;
 import com.ocp.eia.modules.knowledge.domain.port.KnowledgeDocumentSearchPort;
 import com.ocp.eia.modules.knowledge.domain.port.VectorStorePort;
@@ -16,7 +18,10 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -33,6 +38,7 @@ public class RagRetrievalService {
     private final VectorStorePort vectorStore;
     private final InterventionTextSearchPort interventionTextSearchPort;
     private final KnowledgeDocumentSearchPort knowledgeDocumentSearchPort;
+    private final ExactFaultCodeSearchPort exactFaultCodeSearchPort;
     private final AppProperties appProperties;
     private final SearchContextFactory searchContextFactory;
     private final RagRetrievalMetrics ragRetrievalMetrics;
@@ -45,7 +51,26 @@ public class RagRetrievalService {
         boolean hybridEnabled = appProperties.getAi().getRag().isHybridTextEnabled();
         long retrievalStart = System.nanoTime();
         int queryLength = request.description() != null ? request.description().length() : 0;
-        log.info("RAG retrieve start: queryLength={}, topK={}, hybrid={}", queryLength, topK, hybridEnabled);
+        QuerySignals querySignals = QuerySignalExtractor.extract(request.description());
+        log.info("RAG retrieve start: queryLength={}, topK={}, hybrid={}, faultCodes={}",
+                queryLength, topK, hybridEnabled, querySignals.faultCodes());
+
+        if (shouldReturnCodeNotFound(querySignals)) {
+            String unknownCode = querySignals.primaryFaultCode();
+            log.info("RAG code inconnu détecté: {}", unknownCode);
+            return RetrievalOutcome.codeNotFound(
+                    unknownCode,
+                    hybridEnabled,
+                    elapsedMs(retrievalStart)
+            );
+        }
+
+        List<SimilarIntervention> exactMatches = findExactMatches(querySignals, topK);
+        SearchContext searchContext = searchContextFactory.from(request, querySignals);
+        log.debug("Contexte de recherche: equipmentId={}, failureId={}, family={}, zone={}, manufacturer={}",
+                searchContext.equipmentId(), searchContext.failureId(),
+                searchContext.equipmentFamily(), searchContext.equipmentZone(),
+                searchContext.manufacturer());
 
         float[] queryEmbedding;
         String embeddingStatus;
@@ -62,11 +87,6 @@ public class RagRetrievalService {
             );
         }
 
-        SearchContext searchContext = searchContextFactory.from(request);
-        log.debug("Contexte de recherche: equipmentId={}, failureId={}, family={}, zone={}",
-                searchContext.equipmentId(), searchContext.failureId(),
-                searchContext.equipmentFamily(), searchContext.equipmentZone());
-
         CompletableFuture<List<SimilarIntervention>> vectorFuture = CompletableFuture.supplyAsync(() -> {
             try {
                 return vectorStore.findSimilar(queryEmbedding, topK, searchContext);
@@ -79,7 +99,12 @@ public class RagRetrievalService {
         CompletableFuture<List<SimilarIntervention>> textFuture = hybridEnabled
                 ? CompletableFuture.supplyAsync(() -> {
                     try {
-                        return interventionTextSearchPort.searchValidated(request.description(), topK, searchContext);
+                        List<SimilarIntervention> standard = interventionTextSearchPort.searchValidated(
+                                request.description(), topK, searchContext, querySignals);
+                        int semanticTopK = Math.max(topK, 8);
+                        List<SimilarIntervention> semantic = interventionTextSearchPort.searchBySemanticContext(
+                                querySignals, searchContext, semanticTopK);
+                        return mergeInterventionLists(standard, semantic);
                     } catch (Exception e) {
                         log.warn("Erreur recherche texte RAG: {}, poursuite avec résultats vectoriels uniquement",
                                 e.getMessage());
@@ -159,26 +184,51 @@ public class RagRetrievalService {
         HybridRetrievalMerger.UnifiedResults unifiedResults = HybridRetrievalMerger.mergeAll(
                 vectorResults, textResults, mergedKnowledgeResults, topK);
 
-        List<SimilarIntervention> similar = unifiedResults.interventions();
+        List<SimilarIntervention> similar = RetrievalReranker.rerank(
+                unifiedResults.interventions(),
+                exactMatches,
+                querySignals,
+                searchContext,
+                appProperties.getAi().getRag().getExactCodeBoost(),
+                symptomBoost(),
+                zoneMismatchPenalty()
+        );
+        if (similar.size() > topK) {
+            similar = similar.subList(0, topK);
+        }
+
         List<SimilarKnowledgeDocument> knowledgeResults = unifiedResults.knowledgeDocuments();
 
         ragRetrievalMetrics.recordMergedCount(similar.size());
-        log.debug("RAG unified: {} interventions vectorielles, {} interventions texte, {} docs texte, {} docs vectoriels → {} interventions finales, {} documents finaux",
-                vectorResults.size(), textResults.size(), knowledgeTextResults.size(), knowledgeVectorResults.size(),
-                similar.size(), knowledgeResults.size());
+        log.debug("RAG unified: {} interventions vectorielles, {} interventions texte, {} exactes, {} docs → {} finales",
+                vectorResults.size(), textResults.size(), exactMatches.size(),
+                knowledgeResults.size(), similar.size());
 
         double similarityThreshold = appProperties.getAi().getRag().getSimilarityThreshold();
-        List<SimilarIntervention> relevant = similar.stream()
-                .filter(s -> s.similarity() >= similarityThreshold)
+        List<SimilarIntervention> thresholdFiltered = similar.stream()
+                .filter(s -> passesSimilarityThreshold(s, querySignals, similarityThreshold))
                 .toList();
+        List<SimilarIntervention> relevant = FaultCodeInterventionFilter.apply(
+                thresholdFiltered, querySignals, exactMatches);
+        relevant = SemanticContextFilter.apply(relevant, querySignals);
+        if (querySignals.hasSemanticContext() && !querySignals.hasFaultCodes()) {
+            relevant = ensureSemanticBreadth(relevant, querySignals, searchContext, similarityThreshold, 3);
+            relevant = sortBySimilarity(relevant).stream().limit(3).toList();
+        }
         ragRetrievalMetrics.recordFilteredCount(relevant.size());
+
+        if (querySignals.hasFaultCodes() && thresholdFiltered.size() != relevant.size()) {
+            log.info("RAG filtre code défaut: {} → {} interventions (codes={})",
+                    thresholdFiltered.size(), relevant.size(), querySignals.faultCodes());
+        }
 
         long retrievalDurationMs = elapsedMs(retrievalStart);
         log.info(
-                "RAG retrieve done: durationMs={}, vector={}, text={}, merged={}, relevant={}, knowledgeDocs={}, embeddingStatus={}",
+                "RAG retrieve done: durationMs={}, vector={}, text={}, exact={}, merged={}, relevant={}, knowledgeDocs={}, embeddingStatus={}",
                 retrievalDurationMs,
                 vectorResults.size(),
                 textResults.size(),
+                exactMatches.size(),
                 similar.size(),
                 relevant.size(),
                 knowledgeResults.size(),
@@ -197,8 +247,34 @@ public class RagRetrievalService {
                 hybridEnabled,
                 retrievalDurationMs,
                 false,
+                null,
+                false,
                 null
         );
+    }
+
+    private boolean shouldReturnCodeNotFound(QuerySignals querySignals) {
+        if (!appProperties.getAi().getRag().isCodeNotFoundEnabled() || !querySignals.hasFaultCodes()) {
+            return false;
+        }
+        String primaryCode = querySignals.primaryFaultCode();
+        return primaryCode != null && !exactFaultCodeSearchPort.existsFaultCode(primaryCode);
+    }
+
+    private List<SimilarIntervention> findExactMatches(QuerySignals querySignals, int topK) {
+        if (!querySignals.hasFaultCodes()) {
+            return List.of();
+        }
+
+        Map<UUID, SimilarIntervention> unique = new LinkedHashMap<>();
+        for (String code : querySignals.faultCodes()) {
+            List<SimilarIntervention> matches = exactFaultCodeSearchPort.searchByExactCode(
+                    code, querySignals.manufacturer(), topK);
+            for (SimilarIntervention match : matches) {
+                unique.putIfAbsent(match.interventionId(), match);
+            }
+        }
+        return new ArrayList<>(unique.values());
     }
 
     private List<SimilarKnowledgeDocument> mergeKnowledgeResults(
@@ -229,6 +305,83 @@ public class RagRetrievalService {
         return (System.nanoTime() - startNano) / 1_000_000L;
     }
 
+    private static List<SimilarIntervention> mergeInterventionLists(
+            List<SimilarIntervention> first,
+            List<SimilarIntervention> second
+    ) {
+        Map<UUID, SimilarIntervention> merged = new LinkedHashMap<>();
+        for (SimilarIntervention item : first) {
+            merged.put(item.interventionId(), item);
+        }
+        for (SimilarIntervention item : second) {
+            merged.merge(item.interventionId(), item, (a, b) ->
+                    a.similarity() >= b.similarity() ? a : b);
+        }
+        return List.copyOf(merged.values());
+    }
+
+    private List<SimilarIntervention> ensureSemanticBreadth(
+            List<SimilarIntervention> current,
+            QuerySignals signals,
+            SearchContext context,
+            double similarityThreshold,
+            int minCount
+    ) {
+        if (current.size() >= minCount) {
+            return current;
+        }
+
+        List<SimilarIntervention> supplemental = interventionTextSearchPort.searchBySemanticContext(
+                signals, context, Math.max(minCount * 3, 8));
+        List<SimilarIntervention> merged = mergeInterventionLists(current, supplemental);
+        List<SimilarIntervention> filtered = merged.stream()
+                .filter(item -> passesSimilarityThreshold(item, signals, similarityThreshold))
+                .toList();
+        filtered = SemanticContextFilter.apply(filtered, signals);
+        if (filtered.size() >= minCount) {
+            return filtered;
+        }
+        return filtered.isEmpty() ? current : filtered;
+    }
+
+    private static List<SimilarIntervention> sortBySimilarity(List<SimilarIntervention> interventions) {
+        return interventions.stream()
+                .sorted(Comparator.comparingDouble(SimilarIntervention::similarity).reversed())
+                .toList();
+    }
+
+    private boolean passesSimilarityThreshold(
+            SimilarIntervention item,
+            QuerySignals signals,
+            double defaultThreshold
+    ) {
+        if (item.similarity() >= defaultThreshold) {
+            return true;
+        }
+        if (!signals.hasSemanticContext()
+                || signals.symptomKeywords() == null
+                || signals.symptomKeywords().isEmpty()) {
+            return false;
+        }
+        String combined = String.join(" ",
+                item.symptomes(),
+                item.causeRacine(),
+                item.faultCode());
+        int overlap = SymptomQueryExpander.countSymptomOverlap(combined, signals.symptomKeywords());
+        double relaxedThreshold = Math.min(defaultThreshold, 0.55);
+        return overlap >= 1 && item.similarity() >= relaxedThreshold;
+    }
+
+    private double symptomBoost() {
+        return appProperties.getAi().getRag().getContext() != null
+                ? appProperties.getAi().getRag().getContext().getSymptomBoost() : 1.5;
+    }
+
+    private double zoneMismatchPenalty() {
+        return appProperties.getAi().getRag().getContext() != null
+                ? appProperties.getAi().getRag().getContext().getZoneMismatchPenalty() : 0.6;
+    }
+
     public record RetrievalOutcome(
             List<SimilarIntervention> relevant,
             List<SimilarKnowledgeDocument> knowledgeDocuments,
@@ -241,7 +394,9 @@ public class RagRetrievalService {
             boolean hybridEnabled,
             long retrievalDurationMs,
             boolean unavailable,
-            String unavailableReason
+            String unavailableReason,
+            boolean codeNotFound,
+            String unknownFaultCode
     ) {
         public static RetrievalOutcome unavailable(
                 boolean hybridEnabled,
@@ -261,7 +416,32 @@ public class RagRetrievalService {
                     hybridEnabled,
                     retrievalDurationMs,
                     true,
-                    reason
+                    reason,
+                    false,
+                    null
+            );
+        }
+
+        public static RetrievalOutcome codeNotFound(
+                String unknownFaultCode,
+                boolean hybridEnabled,
+                long retrievalDurationMs
+        ) {
+            return new RetrievalOutcome(
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    0,
+                    0,
+                    0,
+                    "OK",
+                    hybridEnabled,
+                    retrievalDurationMs,
+                    false,
+                    null,
+                    true,
+                    unknownFaultCode
             );
         }
     }

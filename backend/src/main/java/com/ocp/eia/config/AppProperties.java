@@ -26,6 +26,8 @@ public class AppProperties {
         private boolean enabled = false;
         /** Provider IA : ollama (défaut), openai, gemini */
         private String provider = "ollama";
+        /** Réindexer au démarrage si des interventions validées n'ont pas d'embedding. */
+        private boolean reindexOnStartup = true;
     }
 
     @Getter
@@ -71,13 +73,18 @@ public class AppProperties {
             private boolean hybridTextEnabled = true;
             private Context context = new Context();
             private Performance performance = new Performance();
+            private double exactCodeBoost = 10.0;
+            private boolean codeNotFoundEnabled = true;
             
             @Getter
             @Setter
             public static class Context {
                 private double equipmentBoost = 2.0;
-                private double familyBoost = 1.5;
-                private double zoneBoost = 1.2;
+                private double familyBoost = 1.6;
+                private double zoneBoost = 1.8;
+                private double manufacturerBoost = 1.8;
+                private double symptomBoost = 1.5;
+                private double zoneMismatchPenalty = 0.6;
             }
             
             @Getter

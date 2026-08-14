@@ -6,6 +6,7 @@ import com.ocp.eia.domain.model.Equipment;
 import com.ocp.eia.domain.model.Failure;
 import com.ocp.eia.domain.repository.EquipmentRepository;
 import com.ocp.eia.domain.repository.FailureRepository;
+import com.ocp.eia.modules.knowledge.domain.model.QuerySignals;
 import com.ocp.eia.modules.knowledge.domain.model.SearchContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,18 +24,20 @@ public class SearchContextFactory {
     private final FailureRepository failureRepository;
 
     public SearchContext from(AiAssistRequest request) {
+        return from(request, QuerySignals.empty());
+    }
+
+    public SearchContext from(AiAssistRequest request, QuerySignals signals) {
         try {
             if (request.equipmentId() != null) {
                 Equipment equipment = equipmentRepository.findById(request.equipmentId()).orElse(null);
                 if (equipment != null) {
-                    return SearchContext.withBoosts(
+                    return buildContext(
                             equipment.getId(),
                             request.failureId(),
                             equipment.getFamille(),
                             equipment.getZone(),
-                            equipmentBoost(),
-                            familyBoost(),
-                            zoneBoost()
+                            signals
                     );
                 }
             }
@@ -43,23 +46,56 @@ public class SearchContextFactory {
                 Failure failure = failureRepository.findByIdWithDetails(request.failureId()).orElse(null);
                 if (failure != null && failure.getEquipment() != null) {
                     Equipment equipment = failure.getEquipment();
-                    return SearchContext.withBoosts(
+                    return buildContext(
                             equipment.getId(),
                             failure.getId(),
                             equipment.getFamille(),
                             equipment.getZone(),
-                            equipmentBoost(),
-                            familyBoost(),
-                            zoneBoost()
+                            signals
                     );
                 }
             }
 
-            return SearchContext.none();
+            return buildContextFromSignals(signals);
         } catch (Exception e) {
             log.warn("Erreur lors de la construction du contexte de recherche: {}", e.getMessage());
             return SearchContext.none();
         }
+    }
+
+    private SearchContext buildContextFromSignals(QuerySignals signals) {
+        String family = signals.equipmentFamily().orElse(null);
+        String zone = signals.equipmentZone().orElse(null);
+        return buildContext(null, null, family, zone, signals);
+    }
+
+    private SearchContext buildContext(
+            java.util.UUID equipmentId,
+            java.util.UUID failureId,
+            String family,
+            String zone,
+            QuerySignals signals
+    ) {
+        if (family == null || family.isBlank()) {
+            family = signals.equipmentFamily().orElse(null);
+        }
+        if (zone == null || zone.isBlank()) {
+            zone = signals.equipmentZone().orElse(null);
+        }
+
+        String manufacturer = signals.manufacturer().orElse(null);
+        return SearchContext.withSignals(
+                equipmentId,
+                failureId,
+                family,
+                zone,
+                manufacturer,
+                signals.faultCodes(),
+                equipmentBoost(),
+                familyBoost(),
+                zoneBoost(),
+                manufacturerBoost()
+        );
     }
 
     private double equipmentBoost() {
@@ -69,11 +105,16 @@ public class SearchContextFactory {
 
     private double familyBoost() {
         return appProperties.getAi().getRag().getContext() != null
-                ? appProperties.getAi().getRag().getContext().getFamilyBoost() : 1.5;
+                ? appProperties.getAi().getRag().getContext().getFamilyBoost() : 1.6;
     }
 
     private double zoneBoost() {
         return appProperties.getAi().getRag().getContext() != null
-                ? appProperties.getAi().getRag().getContext().getZoneBoost() : 1.2;
+                ? appProperties.getAi().getRag().getContext().getZoneBoost() : 1.8;
+    }
+
+    private double manufacturerBoost() {
+        return appProperties.getAi().getRag().getContext() != null
+                ? appProperties.getAi().getRag().getContext().getManufacturerBoost() : 1.8;
     }
 }

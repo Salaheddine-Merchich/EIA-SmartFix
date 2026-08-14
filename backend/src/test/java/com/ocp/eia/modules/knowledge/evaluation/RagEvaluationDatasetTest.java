@@ -12,8 +12,10 @@ class RagEvaluationDatasetTest {
 
         assertFalse(cases.isEmpty());
         assertTrue(cases.size() >= 8);
-        assertTrue(cases.stream().anyMatch(c -> c.caseId().equals("E001-convoyeur-siemens")));
-        assertTrue(cases.stream().anyMatch(c -> c.question().contains("E001")));
+        assertTrue(cases.stream().anyMatch(c -> c.caseId().equals("E21-hitachi-surchauffe")));
+        assertTrue(cases.stream().anyMatch(c -> c.question().contains("E21")));
+        assertTrue(cases.stream().anyMatch(c -> c.caseId().equals("F001-inconnu")));
+        assertTrue(cases.stream().anyMatch(c -> c.caseId().equals("pompe-pv-no-start")));
         assertTrue(cases.stream().anyMatch(c -> c.expectedInterventionId() == null));
     }
 

@@ -42,7 +42,8 @@ public class RagPromptBuilder {
                 "advice": "Conseil de maintenance préventive avec références"
             }
             
-            IMPORTANT: Ne JAMAIS laisser correctiveActions vide. Si aucune intervention similaire précise n'est trouvée, propose des actions génériques mais techniques appropriées au type d'équipement mentionné.
+            IMPORTANT: Si un code défaut est mentionné dans la requête, base ton analyse UNIQUEMENT sur les interventions dont le code correspond. Si aucune intervention ne correspond à ce code, indique-le explicitement dans le summary.
+            Ne JAMAIS laisser correctiveActions vide. En l'absence d'intervention pertinente, limite-toi à des vérifications documentées sans inventer de diagnostic.
             """;
 
     public String systemPrompt() {
@@ -81,8 +82,11 @@ public class RagPromptBuilder {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < similar.size(); i++) {
             SimilarIntervention row = similar.get(i);
-            sb.append("--- Intervention ").append(i + 1).append(" (équipement: ").append(row.equipmentCode())
-                    .append(") ---\n");
+            sb.append("--- Intervention ").append(i + 1).append(" (équipement: ").append(row.equipmentCode());
+            if (row.faultCode() != null && !row.faultCode().isBlank()) {
+                sb.append(", code: ").append(row.faultCode());
+            }
+            sb.append(") ---\n");
             if (row.symptomes() != null) {
                 sb.append("Symptômes: ").append(truncateField(row.symptomes())).append("\n");
             }

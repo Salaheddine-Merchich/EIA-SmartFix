@@ -138,7 +138,7 @@ Les pannes, interventions, utilisateurs et documents sont stockés dans le volum
 |--------|----------------------|
 | `docker compose restart` / `up` / rebuild image | Oui |
 | `docker compose down` (sans `-v`) | Oui |
-| `docker compose down -v` ou suppression du volume | **Non** — retour aux seeds Flyway (~3 users démo, 0 pannes) |
+| `docker compose down -v` ou suppression du volume | **Non** — retour aux seeds Flyway (users démo + données constructeur PDF V21–V24) |
 
 **Sauvegarde rapide :**
 
@@ -166,21 +166,29 @@ docker exec -i eia-postgres psql -U eia_user -d eia_smartfix < backup.sql
 
 Crée les 4 utilisateurs manquants, injecte 8 pannes/interventions validées (API), **+10 équipements et +18 pannes/interventions SQL** (FullRag, activé par défaut), puis réindexe le RAG. Mot de passe par défaut : `Password123!`.
 
-Counts attendus après restauration complète : **14 équipements**, **26 pannes**, **26 interventions validées**.
+Counts attendus après migrations Flyway V21–V24 (données constructeur PDF) : **14 équipements**, **~119 pannes**, **~119 interventions validées**, **~18 documents** de connaissance.
 
 **Vérifier la base RAG (guides + embeddings)** — le KPI « Documents techniques » affiche les guides actifs ; le hint dashboard indique aussi les interventions indexées pour le RAG :
 
 ```bash
-docker compose -p eiasmartfix --profile ai up -d ollama backend frontend
+docker compose --profile ai up -d ollama backend frontend
 docker exec eia-ollama ollama list   # llama3.2 + nomic-embed-text
-docker exec eia-postgres psql -U eia_user -d eia_smartfix -c "SELECT COUNT(*) FROM knowledge_documents; SELECT COUNT(*) FROM intervention_embeddings;"
+docker exec eia-postgres psql -U eia_user -d eia_smartfix -c "
+  SELECT COUNT(*) AS equipment FROM equipment;
+  SELECT COUNT(*) AS failures FROM failures;
+  SELECT COUNT(*) AS validated FROM interventions WHERE statut_validation = 'VALIDEE';
+  SELECT COUNT(*) AS knowledge_docs FROM knowledge_documents;
+  SELECT COUNT(*) AS intervention_emb FROM intervention_embeddings;"
 ```
 
-Attendu après seeds Flyway + restauration : **13** guides (`knowledge_documents`) et **26** embeddings d'interventions (`intervention_embeddings`). Si les embeddings sont incomplets :
+Attendu après Flyway V24 + réindexation : **~18** guides (`knowledge_documents`) et **~119** embeddings d'interventions. Si les embeddings sont incomplets :
 
 ```powershell
-# JWT admin requis — ou relancer restore-rag-data.ps1 (réindexe en fin de script)
-curl -X POST http://127.0.0.1:8080/api/v1/admin/knowledge/reindex -H "Authorization: Bearer <token>"
+# JWT admin requis
+.\scripts\enrich-rag-complete.ps1 -DbPassword '<db>' -AdminPassword 'Password123!'
+# ou manuellement :
+# POST /api/v1/admin/knowledge/reindex
+# POST /api/v1/admin/knowledge/reindex-documents
 ```
 
 Pour restaurer sans l'enrichissement SQL : `.\scripts\restore-rag-data.ps1 -NoFullRag`
@@ -196,13 +204,46 @@ Les fichiers `backups/*.sql` sont ignorés par Git (données locales).
 
 Ne pas définir `SPRING_DATASOURCE_URL=localhost:15432` dans le conteneur backend Docker — utiliser le service Compose `postgres:5432`.
 
-## Scripts d'enrichissement (dev)
+## Données constructeur PDF (Flyway V21–V24)
 
-Sous `scripts/` : SQL d'enrichissement RAG + `enrich-rag-complete.ps1` (mots de passe **paramétrés**, jamais en dur).
+Les manuels variateurs (ABB ACS880, Hitachi SJ200, VEICHI SI23, Goodrive 100-PV) alimentent la base via migrations Flyway :
+
+| Migration | Contenu |
+|-----------|---------|
+| V21 | Suppression équipements démo (MOT-001, VAR-012…) |
+| V22 | 14 équipements (filature, convoyage, pompage PV) |
+| V23 | ~119 pannes + interventions **VALIDEE** (procédures constructeur) |
+| V24 | 5 documents `knowledge_documents` (fault tracing / dépannage) |
+
+Régénérer V23 après modification des données source :
+
+```bash
+python scripts/generate-pdf-seed.py
+```
+
+**Prérequis RAG :** `KNOWLEDGE_ENABLED=true`, profil `dev` ou `ai`, Ollama avec `nomic-embed-text` et `llama3.2`.
+
+Reset base + import complet :
 
 ```powershell
-cd scripts
-.\enrich-rag-complete.ps1 -DbPassword '<db>' -AdminPassword '<admin>'
+docker compose down -v
+docker compose --profile ai up -d --build
+docker exec eia-ollama ollama pull nomic-embed-text
+docker exec eia-ollama ollama pull llama3.2
+# Attendre démarrage backend (Flyway V24) puis réindexer si profil prod :
+.\scripts\enrich-rag-complete.ps1 -DbPassword '<db>' -AdminPassword 'Password123!'
+```
+
+Requêtes test assistant IA : `2310 overcurrent ACS880 filature`, `E.oC1 VEICHI`, `A.LuT marche à sec`, `OUt1 Goodrive`, `E21 Hitachi SJ200`.
+
+## Scripts RAG (dev)
+
+`scripts/enrich-rag-complete.ps1` — vérifie les comptages post-Flyway et réindexe interventions + documents (mots de passe **paramétrés**).
+
+Les fichiers `enrichment-*.sql` sont **dépréciés** (remplacés par V21–V24).
+
+```powershell
+.\scripts\enrich-rag-complete.ps1 -DbPassword '<db>' -AdminPassword '<admin>'
 ```
 
 ## Licence

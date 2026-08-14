@@ -37,6 +37,7 @@ public class RagAssistUseCase {
 
     private final RagRetrievalService ragRetrievalService;
     private final RagSuggestionService ragSuggestionService;
+    private final RagSuggestionParser ragSuggestionParser;
     private final RagRetrievalMetrics ragRetrievalMetrics;
     private final RagObservabilityService ragObservabilityService;
     private final ApplicationEventPublisher eventPublisher;
@@ -69,6 +70,24 @@ public class RagAssistUseCase {
                         outcome.retrievalDurationMs(),
                         outcome.embeddingStatus()
                 );
+            }
+
+            if (outcome.codeNotFound()) {
+                AiSuggestions suggestions = ragSuggestionParser.unknownFaultCodeFallback(outcome.unknownFaultCode());
+                AiDiagnosticTrace trace = AiDiagnosticTraceFactory.buildTrace(
+                        request.description(),
+                        List.of(),
+                        outcome.vectorCount(),
+                        outcome.textCount(),
+                        outcome.mergedCount(),
+                        outcome.embeddingStatus(),
+                        outcome.hybridEnabled(),
+                        outcome.retrievalDurationMs(),
+                        0L
+                );
+                diagnosticStatsService.record(trace);
+                ragObservabilityService.recordFallbackResponse();
+                return AiDiagnosticTraceFactory.toResponse(List.of(), suggestions, trace);
             }
 
             List<SimilarIntervention> relevant = outcome.relevant();

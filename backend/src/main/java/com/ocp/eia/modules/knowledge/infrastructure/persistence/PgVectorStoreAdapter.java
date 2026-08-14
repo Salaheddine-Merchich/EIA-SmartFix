@@ -62,6 +62,8 @@ public class PgVectorStoreAdapter implements VectorStorePort {
                        e.id AS equipment_id,
                        e.famille AS equipment_family,
                        e.zone AS equipment_zone,
+                       f.code_defaut AS fault_code,
+                       e.constructeur AS constructeur,
                        (1 - (ie.embedding <=> ?::vector)) AS base_similarity
                 FROM intervention_embeddings ie
                 JOIN interventions i ON i.id = ie.intervention_id
@@ -87,9 +89,10 @@ public class PgVectorStoreAdapter implements VectorStorePort {
                     UUID equipmentId = UUID.fromString(rs.getString("equipment_id"));
                     String family = rs.getString("equipment_family");
                     String zone = rs.getString("equipment_zone");
+                    String constructeur = rs.getString("constructeur");
                     double baseSimilarity = rs.getDouble("base_similarity");
 
-                    double boost = context.calculateBoost(equipmentId, family, zone);
+                    double boost = context.calculateBoost(equipmentId, family, zone, constructeur);
                     double finalSimilarity = Math.min(1.0, baseSimilarity * boost);
 
                     return new SimilarIntervention(
@@ -99,7 +102,11 @@ public class PgVectorStoreAdapter implements VectorStorePort {
                             rs.getString("cause_racine"),
                             rs.getString("actions_correctives"),
                             rs.getString("analyse_technique"),
-                            finalSimilarity
+                            finalSimilarity,
+                            rs.getString("fault_code"),
+                            constructeur,
+                            family,
+                            zone
                     );
                 },
                 params.toArray());

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @Component
 @ConditionalOnProperty(name = "app.knowledge.enabled", havingValue = "true")
@@ -69,10 +70,10 @@ public class RagSuggestionParser {
                 .distinct()
                 .limit(3)
                 .forEach(cause -> {
-                    String[] parts = cause.split("[.;]");
+                    String[] parts = splitActionSegments(cause);
                     for (String part : parts) {
                         String cleaned = part.trim();
-                        if (cleaned.length() > 15) {
+                        if (cleaned.length() > 10) {
                             causes.add(cleaned);
                             if (causes.size() >= 3) {
                                 break;
@@ -87,11 +88,10 @@ public class RagSuggestionParser {
                 .distinct()
                 .limit(4)
                 .forEach(actionText -> {
-                    String[] parts = actionText.split("[.;,]");
+                    String[] parts = splitActionSegments(actionText);
                     for (String part : parts) {
                         String cleaned = part.trim();
-                        if (cleaned.length() > 20 && !cleaned.toLowerCase().startsWith("remplacer")
-                                && actions.stream().noneMatch(existing ->
+                        if (isActionCandidate(cleaned) && actions.stream().noneMatch(existing ->
                                 existing.contains(cleaned.substring(0, Math.min(cleaned.length(), 30))))) {
                             String finalAction = cleaned;
                             if (cleaned.toLowerCase().contains("vérifier") && !cleaned.contains("avec")) {
@@ -109,7 +109,7 @@ public class RagSuggestionParser {
             boolean hasManual = knowledgeDocuments.stream().anyMatch(d -> "manual".equals(d.documentType()));
             boolean hasProcedure = knowledgeDocuments.stream().anyMatch(d -> "procedure".equals(d.documentType()));
 
-            if (hasManual && causes.size() < 3) {
+            if (hasManual && causes.isEmpty()) {
                 causes.add("Consulter manuel constructeur pour diagnostic détaillé");
             }
             if (hasProcedure && actions.size() < 3) {
@@ -153,6 +153,41 @@ public class RagSuggestionParser {
                 "Pas assez de données historiques validées pour cette description.",
                 "Documentez cette intervention pour enrichir la base de connaissances."
         );
+    }
+
+    public AiSuggestions unknownFaultCodeFallback(String faultCode) {
+        String code = faultCode != null ? faultCode : "inconnu";
+        return new AiSuggestions(
+                List.of("Le code défaut " + code + " n'existe pas dans la base de connaissances validée"),
+                List.of(
+                        "Vérifier le code affiché sur l'équipement ou le variateur",
+                        "Consulter le manuel constructeur pour le libellé exact du défaut"
+                ),
+                "Aucune intervention validée ne correspond au code " + code + ".",
+                "Documentez l'intervention après résolution pour enrichir la base."
+        );
+    }
+
+    /**
+     * Segmente sur ; et , sans couper les références paramètres (ex. F14.11).
+     */
+    static String[] splitActionSegments(String text) {
+        if (text == null || text.isBlank()) {
+            return new String[0];
+        }
+        return text.split("\\s*[;,]\\s*");
+    }
+
+    private static boolean isActionCandidate(String cleaned) {
+        if (cleaned == null || cleaned.isBlank()) {
+            return false;
+        }
+        String lower = cleaned.toLowerCase(Locale.ROOT);
+        if (lower.startsWith("augmenter") || lower.startsWith("ajuster") || lower.startsWith("vérifier")
+                || lower.startsWith("verifier")) {
+            return cleaned.length() >= 8;
+        }
+        return cleaned.length() >= 12 && !lower.startsWith("remplacer");
     }
 
     private List<String> toStringList(JsonNode node) {

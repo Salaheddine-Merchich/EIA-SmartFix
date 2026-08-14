@@ -40,6 +40,7 @@ class RagAssistUseCaseTest {
 
     @Mock private RagRetrievalService ragRetrievalService;
     @Mock private RagSuggestionService ragSuggestionService;
+    @Mock private RagSuggestionParser ragSuggestionParser;
     @Mock private RagRetrievalMetrics ragRetrievalMetrics;
     @Mock private RagObservabilityService ragObservabilityService;
     @Mock private ApplicationEventPublisher eventPublisher;
@@ -162,6 +163,28 @@ class RagAssistUseCaseTest {
         verify(ragObservabilityService).recordSuccessfulQuery();
     }
 
+    @Test
+    void assist_codeNotFound_returnsUnknownCodeFallbackWithoutLlm() {
+        AiAssistRequest request = new AiAssistRequest(null, null, "F001 surchauffe convoyeur", null);
+        AiSuggestions unknownCode = new AiSuggestions(
+                List.of("Le code défaut F001 n'existe pas dans la base de connaissances validée"),
+                List.of("Vérifier le code affiché"),
+                "Aucune intervention validée ne correspond au code F001.",
+                "Documentez l'intervention"
+        );
+        when(ragRetrievalService.retrieve(request)).thenReturn(
+                RetrievalOutcome.codeNotFound("F001", true, 3L)
+        );
+        when(ragSuggestionParser.unknownFaultCodeFallback("F001")).thenReturn(unknownCode);
+
+        AiAssistResponse response = useCase.assist(request);
+
+        assertTrue(response.similarInterventions().isEmpty());
+        assertTrue(response.suggestions().probableCauses().get(0).contains("F001"));
+        verify(ragSuggestionService, never()).generateSuggestions(anyString(), any(), any());
+        verify(ragObservabilityService).recordFallbackResponse();
+    }
+
     private static SimilarIntervention similar(UUID id, double score) {
         return new SimilarIntervention(id, "EQ-1", "Symptômes", "Cause", "Actions", "Analyse", score);
     }
@@ -183,6 +206,8 @@ class RagAssistUseCaseTest {
                 "OK",
                 true,
                 5L,
+                false,
+                null,
                 false,
                 null
         );

@@ -1,5 +1,11 @@
-# Script complet d'enrichissement RAG - EIA SmartFix
-# Exécute les scripts SQL et réindexe le RAG
+# Script de reindexation RAG apres migrations Flyway V21-V24 (donnees constructeur PDF)
+#
+# DEPRECATED: enrichment-equipment.sql, enrichment-failures.sql, enrichment-interventions.sql
+# Les donnees PDF sont desormais chargees via Flyway:
+#   V21 cleanup demo, V22 equipment, V23 failures/interventions, V24 knowledge_documents
+#
+# Usage: appliquer Flyway (demarrage backend ou mvn flyway:migrate), puis:
+#   .\scripts\enrich-rag-complete.ps1 -DbPassword <pwd> -AdminPassword Password123!
 param(
     [Parameter(Mandatory = $true)][string]$DbPassword,
     [Parameter(Mandatory = $true)][string]$AdminPassword,
@@ -13,130 +19,83 @@ param(
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-Write-Host "=== Enrichissement RAG EIA SmartFix ===" -ForegroundColor Green
+Write-Host "=== Reindexation RAG EIA SmartFix (donnees PDF V21-V24) ===" -ForegroundColor Green
+Write-Host "Note: enrichment-*.sql est deprecie — utiliser les migrations Flyway V21-V24." -ForegroundColor Yellow
 
 $env:PGPASSWORD = $DbPassword
 
 try {
-    # Vérifier connexion PostgreSQL
-    Write-Host "Vérification connexion PostgreSQL..." -ForegroundColor Yellow
-    try {
-        $testConnection = psql -h $DbHost -p $DbPort -U $DbUser -d $DbName -c "SELECT COUNT(*) FROM equipment;" -t
-        Write-Host "✓ Connexion PostgreSQL OK - $($testConnection.Trim()) équipements existants" -ForegroundColor Green
-    } catch {
-        Write-Host "✗ Erreur connexion PostgreSQL: $($_.Exception.Message)" -ForegroundColor Red
-        exit 1
+    Write-Host "`n1. Verification connexion PostgreSQL et comptages..." -ForegroundColor Yellow
+    $equipmentCount = (psql -h $DbHost -p $DbPort -U $DbUser -d $DbName -c "SELECT COUNT(*) FROM equipment;" -t).Trim()
+    $failuresCount = (psql -h $DbHost -p $DbPort -U $DbUser -d $DbName -c "SELECT COUNT(*) FROM failures;" -t).Trim()
+    $interventionsCount = (psql -h $DbHost -p $DbPort -U $DbUser -d $DbName -c "SELECT COUNT(*) FROM interventions WHERE statut_validation = 'VALIDEE';" -t).Trim()
+    $docsCount = (psql -h $DbHost -p $DbPort -U $DbUser -d $DbName -c "SELECT COUNT(*) FROM knowledge_documents;" -t).Trim()
+
+    Write-Host "  Equipements: $equipmentCount (attendu ~14)" -ForegroundColor Cyan
+    Write-Host "  Pannes: $failuresCount (attendu ~119)" -ForegroundColor Cyan
+    Write-Host "  Interventions validees: $interventionsCount (attendu ~119)" -ForegroundColor Cyan
+    Write-Host "  Documents connaissance: $docsCount (attendu ~18)" -ForegroundColor Cyan
+
+    if ([int]$equipmentCount -lt 14) {
+        Write-Host "ATTENTION: peu d'equipements — verifier que Flyway V22+ est applique." -ForegroundColor Yellow
     }
 
-    # 1. Créer les nouveaux équipements
-    Write-Host "`n1. Création des nouveaux équipements..." -ForegroundColor Yellow
-    try {
-        psql -h $DbHost -p $DbPort -U $DbUser -d $DbName -f (Join-Path $ScriptDir "enrichment-equipment.sql")
-        $equipmentCount = psql -h $DbHost -p $DbPort -U $DbUser -d $DbName -c "SELECT COUNT(*) FROM equipment;" -t
-        Write-Host "✓ Équipements créés - Total: $($equipmentCount.Trim())" -ForegroundColor Green
-    } catch {
-        Write-Host "✗ Erreur création équipements: $($_.Exception.Message)" -ForegroundColor Red
-    }
-
-    # 2. Créer les pannes
-    Write-Host "`n2. Création des pannes..." -ForegroundColor Yellow
-    try {
-        psql -h $DbHost -p $DbPort -U $DbUser -d $DbName -f (Join-Path $ScriptDir "enrichment-failures.sql")
-        $failuresCount = psql -h $DbHost -p $DbPort -U $DbUser -d $DbName -c "SELECT COUNT(*) FROM failures;" -t
-        Write-Host "✓ Pannes créées - Total: $($failuresCount.Trim())" -ForegroundColor Green
-    } catch {
-        Write-Host "✗ Erreur création pannes: $($_.Exception.Message)" -ForegroundColor Red
-    }
-
-    # 3. Créer les interventions (UUIDs valides — fichier consolidé)
-    Write-Host "`n3. Création des interventions..." -ForegroundColor Yellow
-    try {
-        psql -h $DbHost -p $DbPort -U $DbUser -d $DbName -f (Join-Path $ScriptDir "enrichment-interventions.sql")
-        $interventionsCount = psql -h $DbHost -p $DbPort -U $DbUser -d $DbName -c "SELECT COUNT(*) FROM interventions WHERE statut_validation = 'VALIDEE';" -t
-        Write-Host "✓ Interventions créées - Validées: $($interventionsCount.Trim())" -ForegroundColor Green
-    } catch {
-        Write-Host "✗ Erreur création interventions: $($_.Exception.Message)" -ForegroundColor Red
-    }
-
-    # 4. Attendre que le serveur backend soit prêt pour le reindex
-    Write-Host "`n4. Attente serveur backend prêt..." -ForegroundColor Yellow
-    $maxRetries = 10
+    Write-Host "`n2. Attente serveur backend..." -ForegroundColor Yellow
+    $maxRetries = 15
     $retryCount = 0
+    $backendReady = $false
 
     do {
         try {
             $response = Invoke-WebRequest -Uri "$BaseUrl/actuator/health" -TimeoutSec 5
             if ($response.StatusCode -eq 200) {
-                Write-Host "✓ Serveur backend prêt" -ForegroundColor Green
+                Write-Host "Serveur backend pret" -ForegroundColor Green
+                $backendReady = $true
                 break
             }
         } catch {
             $retryCount++
-            Write-Host "Tentative $retryCount/$maxRetries - Serveur pas encore prêt..." -ForegroundColor Gray
+            Write-Host "Tentative $retryCount/$maxRetries..." -ForegroundColor Gray
             Start-Sleep -Seconds 3
         }
     } while ($retryCount -lt $maxRetries)
 
-    if ($retryCount -eq $maxRetries) {
-        Write-Host "✗ Serveur backend non disponible après $maxRetries tentatives" -ForegroundColor Red
-        Write-Host "Le reindex devra être fait manuellement via: POST /api/v1/admin/knowledge/reindex" -ForegroundColor Yellow
+    if (-not $backendReady) {
+        Write-Host "Backend non disponible. Reindex manuel:" -ForegroundColor Red
+        Write-Host "  POST /api/v1/admin/knowledge/reindex" -ForegroundColor Yellow
+        Write-Host "  POST /api/v1/admin/knowledge/reindex-documents" -ForegroundColor Yellow
         exit 1
     }
 
-    # 5. Authentification et reindex RAG
-    Write-Host "`n5. Réindexation RAG..." -ForegroundColor Yellow
-    try {
-        $loginBody = @{
-            email = "admin@ocp.ma"
-            password = $AdminPassword
-        } | ConvertTo-Json
-
-        $loginResponse = Invoke-RestMethod -Uri "$BaseUrl/api/v1/auth/login" -Method POST -ContentType "application/json" -Body $loginBody -TimeoutSec 10
-        $headers = @{
-            "Authorization" = "Bearer $($loginResponse.accessToken)"
-            "Content-Type" = "application/json"
-        }
-
-        $reindexResponse = Invoke-RestMethod -Uri "$BaseUrl/api/v1/admin/knowledge/reindex" -Method POST -Headers $headers -TimeoutSec 30
-        Write-Host "✓ Réindexation terminée:" -ForegroundColor Green
-        Write-Host "  - Traitées: $($reindexResponse.processed)" -ForegroundColor Cyan
-        Write-Host "  - Indexées: $($reindexResponse.indexed)" -ForegroundColor Cyan
-        Write-Host "  - Ignorées: $($reindexResponse.skipped)" -ForegroundColor Cyan
-        Write-Host "  - Erreurs: $($reindexResponse.errors)" -ForegroundColor Cyan
-
-    } catch {
-        Write-Host "✗ Erreur réindexation: $($_.Exception.Message)" -ForegroundColor Red
-        Write-Host "Réindexation manuelle nécessaire via API admin" -ForegroundColor Yellow
+    Write-Host "`n3. Authentification admin..." -ForegroundColor Yellow
+    $loginBody = @{ email = "admin@ocp.ma"; password = $AdminPassword } | ConvertTo-Json
+    $loginResponse = Invoke-RestMethod -Uri "$BaseUrl/api/v1/auth/login" -Method POST -ContentType "application/json" -Body $loginBody -TimeoutSec 15
+    $headers = @{
+        "Authorization" = "Bearer $($loginResponse.accessToken)"
+        "Content-Type"  = "application/json"
     }
 
-    # 6. Vérification finale
-    Write-Host "`n6. Vérification finale..." -ForegroundColor Yellow
-    try {
-        $finalStats = psql -h $DbHost -p $DbPort -U $DbUser -d $DbName -c "
-            SELECT 
-                'Équipements: ' || COUNT(*) FROM equipment
-            UNION ALL SELECT 
-                'Pannes: ' || COUNT(*) FROM failures  
-            UNION ALL SELECT
-                'Interventions validées: ' || COUNT(*) FROM interventions WHERE statut_validation = 'VALIDEE'
-            UNION ALL SELECT
-                'Embeddings: ' || COUNT(*) FROM intervention_embeddings;" -t
+    Write-Host "`n4. Reindexation interventions (intervention_embeddings)..." -ForegroundColor Yellow
+    $reindexResponse = Invoke-RestMethod -Uri "$BaseUrl/api/v1/admin/knowledge/reindex" -Method POST -Headers $headers -TimeoutSec 300
+    Write-Host "  Traitees: $($reindexResponse.processed), Indexees: $($reindexResponse.indexed), Erreurs: $($reindexResponse.errors)" -ForegroundColor Cyan
 
-        Write-Host "✓ Statistiques finales:" -ForegroundColor Green
-        $finalStats | ForEach-Object { Write-Host "  $($_)" -ForegroundColor Cyan }
+    Write-Host "`n5. Reindexation documents connaissance (knowledge_document_embeddings)..." -ForegroundColor Yellow
+    $docReindex = Invoke-RestMethod -Uri "$BaseUrl/api/v1/admin/knowledge/reindex-documents" -Method POST -Headers $headers -TimeoutSec 600
+    Write-Host "  Indexees: $($docReindex.indexed), Echecs: $($docReindex.failed), Total: $($docReindex.total)" -ForegroundColor Cyan
 
-    } catch {
-        Write-Host "✗ Erreur vérification finale: $($_.Exception.Message)" -ForegroundColor Red
-    }
+    Write-Host "`n6. Verification embeddings..." -ForegroundColor Yellow
+    $embedStats = psql -h $DbHost -p $DbPort -U $DbUser -d $DbName -c "
+        SELECT 'intervention_embeddings: ' || COUNT(*) FROM intervention_embeddings
+        UNION ALL SELECT 'knowledge_document_embeddings: ' || COUNT(*) FROM knowledge_document_embeddings;" -t
+    $embedStats | ForEach-Object { Write-Host "  $($_.Trim())" -ForegroundColor Cyan }
 
-    Write-Host "`n=== Enrichissement RAG terminé ===" -ForegroundColor Green
-    Write-Host "Le RAG contient maintenant des données diversifiées pour tester l'assistant IA." -ForegroundColor White
-    Write-Host "Testez avec des requêtes comme:" -ForegroundColor White
-    Write-Host "- 'Capteur pression signal instable'" -ForegroundColor Gray
-    Write-Host "- 'Débitmètre aucun signal électromagnétique'" -ForegroundColor Gray
-    Write-Host "- 'Automate PLC communication perdue'" -ForegroundColor Gray
-    Write-Host "- 'Contacteur ne ferme plus moteur'" -ForegroundColor Gray
-    Write-Host "- 'Réducteur vibrations huile chaude'" -ForegroundColor Gray
+    Write-Host "`n=== Reindexation terminee ===" -ForegroundColor Green
+    Write-Host "Requetes test RAG:" -ForegroundColor White
+    Write-Host "  - Code 2310 overcurrent variateur filature ABB" -ForegroundColor Gray
+    Write-Host "  - E.oC1 surintensite acceleration VEICHI SI23" -ForegroundColor Gray
+    Write-Host "  - A.LuT marche a sec pompe solaire" -ForegroundColor Gray
+    Write-Host "  - OUt1 protection phase U Goodrive" -ForegroundColor Gray
+    Write-Host "  - E21 surchauffe variateur Hitachi SJ200" -ForegroundColor Gray
 } finally {
     Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
 }

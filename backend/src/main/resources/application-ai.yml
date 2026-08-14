@@ -19,18 +19,24 @@ app:
   knowledge:
     enabled: ${KNOWLEDGE_ENABLED:true}
     provider: ollama
+    reindex-on-startup: ${KNOWLEDGE_REINDEX_ON_STARTUP:true}
   ai:
     rag:
-      top-k: 3
+      top-k: 5
       embedding-dimension: 768
-      similarity-threshold: 0.65
+      similarity-threshold: 0.70
       fast-path-enabled: ${RAG_FAST_PATH_ENABLED:true}
       fast-path-min-similarity: ${RAG_FAST_PATH_MIN_SIMILARITY:0.85}
       hybrid-text-enabled: true
+      exact-code-boost: 10.0
+      code-not-found-enabled: true
       context:
         equipment-boost: 2.0
-        family-boost: 1.5
-        zone-boost: 1.2
+        family-boost: 1.6
+        zone-boost: 1.8
+        manufacturer-boost: 1.8
+        symptom-boost: 1.5
+        zone-mismatch-penalty: 0.6
       performance:
         embedding-timeout: 5s
         llm-timeout: 180s

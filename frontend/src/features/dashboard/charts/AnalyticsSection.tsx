@@ -90,6 +90,23 @@ function formatMonthLabel(month: string): string {
 
 }
 
+const VALIDATION_ORDER = ['Validées', 'En attente', 'Brouillon', 'Rejetées'] as const;
+
+function validationColor(name: string): string {
+  switch (name) {
+    case 'Validées':
+      return '#059669';
+    case 'En attente':
+      return '#d97706';
+    case 'Brouillon':
+      return '#64748b';
+    case 'Rejetées':
+      return '#dc2626';
+    default:
+      return brand;
+  }
+}
+
 
 
 export function AnalyticsSection({ stats }: AnalyticsSectionProps) {
@@ -106,9 +123,9 @@ export function AnalyticsSection({ stats }: AnalyticsSectionProps) {
 
 
 
-  const causesData = stats.topCauses.map((item) => ({
+  const causesData = stats.topCauses.map((item, index) => ({
 
-    name: item.cause.length > 28 ? `${item.cause.slice(0, 28)}…` : item.cause,
+    name: `#${index + 1}`,
 
     fullName: item.cause,
 
@@ -133,7 +150,13 @@ export function AnalyticsSection({ stats }: AnalyticsSectionProps) {
     { name: 'En attente', value: stats.pendingValidations },
     { name: 'Brouillon', value: stats.draftInterventions },
     { name: 'Rejetées', value: stats.rejectedInterventions },
-  ].filter((item) => item.value > 0);
+  ]
+    .filter((item) => item.value > 0)
+    .sort(
+      (a, b) =>
+        VALIDATION_ORDER.indexOf(a.name as (typeof VALIDATION_ORDER)[number]) -
+        VALIDATION_ORDER.indexOf(b.name as (typeof VALIDATION_ORDER)[number]),
+    );
 
 
 
@@ -212,27 +235,68 @@ export function AnalyticsSection({ stats }: AnalyticsSectionProps) {
 
         ) : (
 
-          <div className="h-72">
+          <>
 
-            <ResponsiveContainer width="100%" height="100%">
+            <div className="h-56">
 
-              <BarChart data={causesData} layout="vertical" margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+              <ResponsiveContainer width="100%" height="100%">
 
-                <CartesianGrid strokeDasharray="3 3" stroke={border} horizontal={false} />
+                <BarChart data={causesData} layout="vertical" margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
 
-                <XAxis type="number" tick={{ fontSize: 11, fill: muted }} allowDecimals={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={border} horizontal={false} />
 
-                <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11, fill: muted }} />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: muted }} allowDecimals={false} />
 
-                <Tooltip content={<CausesChartTooltip />} />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={36}
+                    tick={{ fontSize: 11, fill: muted }}
+                  />
 
-                <Bar dataKey="value" fill={brand} radius={[0, 6, 6, 0]} />
+                  <Tooltip content={<CausesChartTooltip />} />
 
-              </BarChart>
+                  <Bar dataKey="value" radius={[0, 6, 6, 0]}>
 
-            </ResponsiveContainer>
+                    {causesData.map((entry, index) => (
 
-          </div>
+                      <Cell key={entry.fullName} fill={palette[index % palette.length]} />
+
+                    ))}
+
+                  </Bar>
+
+                </BarChart>
+
+              </ResponsiveContainer>
+
+            </div>
+
+            <ul className="mt-3 space-y-2">
+
+              {causesData.map((item, index) => (
+
+                <li key={item.fullName} className="flex items-start gap-2 text-xs">
+
+                  <span
+
+                    className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full"
+
+                    style={{ backgroundColor: palette[index % palette.length] }}
+
+                  />
+
+                  <span className="min-w-0 flex-1 text-slate-600 dark:text-slate-300">{item.fullName}</span>
+
+                  <span className="shrink-0 font-semibold text-slate-800 dark:text-slate-100">{item.value}</span>
+
+                </li>
+
+              ))}
+
+            </ul>
+
+          </>
 
         )}
 
@@ -254,59 +318,63 @@ export function AnalyticsSection({ stats }: AnalyticsSectionProps) {
 
         ) : (
 
-          <div className="h-72">
+          <>
 
-            <ResponsiveContainer width="100%" height="100%">
+            <div className="h-56">
 
-              <PieChart>
+              <ResponsiveContainer width="100%" height="100%">
 
-                <Pie
+                <PieChart>
 
-                  data={validationData}
+                  <Pie
 
-                  dataKey="value"
+                    data={validationData}
 
-                  nameKey="name"
+                    dataKey="value"
 
-                  innerRadius={58}
+                    nameKey="name"
 
-                  outerRadius={88}
+                    innerRadius={58}
 
-                  paddingAngle={3}
+                    outerRadius={88}
 
-                >
+                    paddingAngle={3}
 
-                  {validationData.map((entry, index) => (
+                  >
 
-                    <Cell key={entry.name} fill={palette[index % palette.length]} />
+                    {validationData.map((entry) => (
 
-                  ))}
+                      <Cell key={entry.name} fill={validationColor(entry.name)} />
 
-                </Pie>
+                    ))}
 
-                <Tooltip content={<ChartTooltip />} />
+                  </Pie>
 
-              </PieChart>
+                  <Tooltip content={<ChartTooltip />} />
 
-            </ResponsiveContainer>
+                </PieChart>
 
-            <ul className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              </ResponsiveContainer>
 
-              {validationData.map((item, index) => (
+            </div>
 
-                <li key={item.name} className="flex items-center gap-2 text-xs text-slate-600">
+            <ul className="mt-3 space-y-2">
+
+              {validationData.map((item) => (
+
+                <li key={item.name} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
 
                   <span
 
-                    className="h-2.5 w-2.5 rounded-full"
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
 
-                    style={{ backgroundColor: palette[index % palette.length] }}
+                    style={{ backgroundColor: validationColor(item.name) }}
 
                   />
 
-                  <span>{item.name}</span>
+                  <span className="min-w-0 flex-1">{item.name}</span>
 
-                  <span className="ml-auto font-semibold text-slate-800">{item.value}</span>
+                  <span className="shrink-0 font-semibold tabular-nums text-slate-800 dark:text-slate-100">{item.value}</span>
 
                 </li>
 
@@ -314,7 +382,7 @@ export function AnalyticsSection({ stats }: AnalyticsSectionProps) {
 
             </ul>
 
-          </div>
+          </>
 
         )}
 

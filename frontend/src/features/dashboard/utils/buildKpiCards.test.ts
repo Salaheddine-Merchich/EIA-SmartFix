@@ -10,6 +10,7 @@ const stats = {
   rejectedInterventions: 1,
   knowledgeDocuments: 13,
   activeKnowledgeDocuments: 11,
+  activeEquipmentSchemas: 20,
   indexedInterventions: 26,
   mttrMinutes: 45,
   mtbfHours: 120,
@@ -44,7 +45,6 @@ describe('buildKpiCards', () => {
     expect(cards[0].hint).toContain('2');
     expect(cards[0].hint).toContain('validation');
     expect(cards[3].value).toBe('11');
-    expect(cards[3].hint).toContain('guides techniques');
-    expect(cards[3].hint).toContain('interventions indexées');
+    expect(cards[3].hint).toBe('20 schémas · 26 fiches RAG');
   });
 });

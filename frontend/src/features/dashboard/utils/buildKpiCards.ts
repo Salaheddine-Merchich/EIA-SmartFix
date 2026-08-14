@@ -37,7 +37,7 @@ export function buildKpiCards(
       title: 'Documents techniques',
       value: formatNumber(stats.activeKnowledgeDocuments),
       subtitle: 'Base de connaissances',
-      hint: `${formatNumber(stats.activeKnowledgeDocuments)} guides techniques + ${formatNumber(stats.indexedInterventions)} interventions indexées pour le RAG`,
+      hint: `${formatNumber(stats.activeEquipmentSchemas)} schémas · ${formatNumber(stats.indexedInterventions)} fiches RAG`,
       icon: 'knowledge',
     },
   ];

@@ -2,6 +2,7 @@ package com.ocp.eia.presentation.controller;
 
 import com.ocp.eia.application.dto.AiDto.AiAssistRequest;
 import com.ocp.eia.application.dto.AiDto.AiAssistResponse;
+import com.ocp.eia.application.validation.ValidAssistQuery;
 import com.ocp.eia.modules.knowledge.application.RagAssistUseCase;
 import com.ocp.eia.modules.knowledge.application.RagAssistStreamUseCase;
 import io.swagger.v3.oas.annotations.Operation;
@@ -49,7 +50,7 @@ public class AiController {
     @GetMapping(value = "/assist/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Assistance IA RAG streaming avec Server-Sent Events")
     public Flux<ServerSentEvent<String>> assistStream(
-            @RequestParam @NotBlank @Size(max = 4000) String description,
+            @RequestParam @NotBlank @Size(max = 4000) @ValidAssistQuery String description,
             @RequestParam(required = false) UUID equipmentId,
             @RequestParam(required = false) UUID failureId,
             @RequestParam(defaultValue = "3") @Min(1) @Max(20) Integer topK) {

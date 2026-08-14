@@ -5,16 +5,14 @@ import { ASSISTANT_LAYOUT } from '../constants/layout';
 
 interface AiAssistantHeaderProps {
   status: AssistantStatus;
-  onNewConversation: () => void;
-  hasMessages: boolean;
   contextHint?: string;
 }
 
-function AiAssistantHeaderComponent({ status, onNewConversation, hasMessages, contextHint }: AiAssistantHeaderProps) {
+function AiAssistantHeaderComponent({ status, contextHint }: AiAssistantHeaderProps) {
   return (
     <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
       <div
-        className={`flex flex-col gap-3 ${ASSISTANT_LAYOUT.pagePaddingX} ${ASSISTANT_LAYOUT.pagePaddingY} sm:flex-row sm:items-center sm:justify-between`}
+        className={`flex flex-col gap-3 ${ASSISTANT_LAYOUT.pagePaddingX} py-3 sm:flex-row sm:items-center sm:justify-between`}
       >
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
@@ -39,15 +37,6 @@ function AiAssistantHeaderComponent({ status, onNewConversation, hasMessages, co
 
         <div className="flex flex-wrap items-center gap-2">
           <LiveAiStatusBadges assistantStatus={status} />
-          {hasMessages && (
-            <button
-              type="button"
-              onClick={onNewConversation}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-            >
-              Nouvelle conversation
-            </button>
-          )}
         </div>
       </div>
     </header>

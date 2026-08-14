@@ -98,6 +98,7 @@ export interface DashboardStats {
   rejectedInterventions: number;
   knowledgeDocuments: number;
   activeKnowledgeDocuments: number;
+  activeEquipmentSchemas: number;
   indexedInterventions: number;
   mttrMinutes?: number;
   mtbfHours?: number;
@@ -134,8 +135,37 @@ export interface RecurringDefectsAnalysis {
 export type {
   AiDiagnosticTrace,
   RetrievedDocument,
+  RetrievedSchema,
   RetrievalStep,
 } from '@/features/ai-assistant/explainability/types';
+
+export interface EquipmentSchemaRef {
+  schemaId: string;
+  equipmentId: string;
+  equipmentCode: string;
+  equipmentDesignation?: string;
+  label: string;
+  schemaType: string;
+  sourcePdf?: string;
+  sourcePage?: number;
+  caption?: string;
+  totalSchemasForEquipment?: number;
+  downloadUrl: string;
+}
+
+export interface EquipmentSchema {
+  id: string;
+  equipmentId: string;
+  equipmentCode: string;
+  label: string;
+  schemaType: string;
+  sourcePdf?: string;
+  sourcePage?: number;
+  mimeType?: string;
+  caption?: string;
+  triggerKeywords?: string[];
+  createdAt?: string;
+}
 
 export interface AiAssistResponse {
   similarInterventions: {
@@ -153,5 +183,28 @@ export interface AiAssistResponse {
     advice: string;
   };
   disclaimer: string;
+  relevantSchemas?: EquipmentSchemaRef[];
   diagnosticTrace?: import('@/features/ai-assistant/explainability/types').AiDiagnosticTrace | null;
+}
+
+export interface AiConversationSummary {
+  id: string;
+  title: string;
+  updatedAt: string;
+}
+
+export interface AiConversationMessageDto {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  payload?: AiAssistResponse | null;
+  createdAt: string;
+}
+
+export interface AiConversationDetail {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messages: AiConversationMessageDto[];
 }

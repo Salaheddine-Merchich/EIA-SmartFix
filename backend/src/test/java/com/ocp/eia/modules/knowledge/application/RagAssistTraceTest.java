@@ -4,6 +4,7 @@ import com.ocp.eia.application.dto.AiDto.AiAssistRequest;
 import com.ocp.eia.application.dto.AiDto.AiAssistResponse;
 import com.ocp.eia.application.dto.AiDto.AiSuggestions;
 import com.ocp.eia.modules.knowledge.application.RagRetrievalService.RetrievalOutcome;
+import com.ocp.eia.modules.knowledge.domain.model.SearchContext;
 import com.ocp.eia.modules.knowledge.domain.model.SimilarIntervention;
 import com.ocp.eia.modules.knowledge.infrastructure.observability.RagObservabilityService;
 import com.ocp.eia.modules.knowledge.infrastructure.observability.RagRetrievalMetrics;
@@ -40,6 +41,8 @@ class RagAssistTraceTest {
     @Mock private RagObservabilityService ragObservabilityService;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private AiDiagnosticStatsService diagnosticStatsService;
+    @Mock private EquipmentSchemaMatcher equipmentSchemaMatcher;
+    @Mock private SearchContextFactory searchContextFactory;
 
     @InjectMocks private RagAssistUseCase useCase;
 
@@ -48,6 +51,8 @@ class RagAssistTraceTest {
         Timer.Sample sample = mock(Timer.Sample.class);
         lenient().when(ragRetrievalMetrics.startRetrievalTimer()).thenReturn(sample);
         lenient().doNothing().when(ragRetrievalMetrics).recordRetrievalDuration(any());
+        lenient().when(searchContextFactory.from(any(), any())).thenReturn(SearchContext.none());
+        lenient().when(equipmentSchemaMatcher.match(any(), any())).thenReturn(List.of());
     }
 
     @Test

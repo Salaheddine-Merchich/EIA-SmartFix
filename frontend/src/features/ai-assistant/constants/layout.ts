@@ -5,20 +5,29 @@ export const ASSISTANT_LAYOUT = {
   pagePaddingY: 'py-4',
   threadGap: 'gap-4',
   sidePanelWidth: 'lg:w-[320px] xl:w-[360px]',
+  historyPanelWidth: 'lg:w-[272px]',
   badgeText: 'text-xs',
 } as const;
 
 export const EXAMPLE_QUERIES = [
   {
-    text: 'Code défaut E001 sur variateur ABB ACS880 au démarrage',
+    text: 'Defaut E21 variateur convoyeur Hitachi SJ200',
     category: 'Code défaut',
   },
   {
-    text: 'Surchauffe moteur convoyeur, température carter > 85°C',
-    category: 'Symptôme',
+    text: 'Pompe PV ne démarre plus station solaire',
+    category: 'Station PV',
   },
   {
-    text: 'Capteur niveau silo 3 affiche 100% malgré vidange',
+    text: 'Code OUt1 affiché sur variateur Goodrive 100-PV',
+    category: 'Code défaut',
+  },
+  {
+    text: 'Code 2310 surintensité sortie variateur ACS880 filature',
+    category: 'Filature',
+  },
+  {
+    text: 'Sonde manque d\'eau TA-TC pompe solaire VEICHI',
     category: 'Instrumentation',
   },
 ] as const;

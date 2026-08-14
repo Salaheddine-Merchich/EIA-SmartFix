@@ -3,9 +3,12 @@ package com.ocp.eia.modules.knowledge.application;
 import com.ocp.eia.application.dto.AiDto.AiAssistRequest;
 import com.ocp.eia.application.dto.AiDto.AiAssistResponse;
 import com.ocp.eia.application.dto.AiDto.AiSuggestions;
+import com.ocp.eia.application.dto.AiDto.EquipmentSchemaDto;
 import com.ocp.eia.modules.knowledge.application.RagRetrievalService.RetrievalOutcome;
 import com.ocp.eia.modules.knowledge.application.RagSuggestionService.SuggestionResult;
 import com.ocp.eia.modules.knowledge.domain.model.AiDiagnosticTrace;
+import com.ocp.eia.modules.knowledge.domain.model.QuerySignals;
+import com.ocp.eia.modules.knowledge.domain.model.SearchContext;
 import com.ocp.eia.modules.knowledge.domain.model.SimilarIntervention;
 import com.ocp.eia.modules.knowledge.domain.model.SimilarKnowledgeDocument;
 import com.ocp.eia.modules.knowledge.infrastructure.observability.RagObservabilityService;
@@ -42,6 +45,8 @@ public class RagAssistUseCase {
     private final RagObservabilityService ragObservabilityService;
     private final ApplicationEventPublisher eventPublisher;
     private final AiDiagnosticStatsService diagnosticStatsService;
+    private final EquipmentSchemaMatcher equipmentSchemaMatcher;
+    private final SearchContextFactory searchContextFactory;
 
     public AiAssistResponse assist(AiAssistRequest request) {
         Timer.Sample retrievalTimer = ragRetrievalMetrics.startRetrievalTimer();
@@ -87,7 +92,8 @@ public class RagAssistUseCase {
                 );
                 diagnosticStatsService.record(trace);
                 ragObservabilityService.recordFallbackResponse();
-                return AiDiagnosticTraceFactory.toResponse(List.of(), suggestions, trace);
+                List<EquipmentSchemaDto> schemas = matchSchemas(request);
+                return AiDiagnosticTraceFactory.toResponse(List.of(), suggestions, trace, schemas);
             }
 
             List<SimilarIntervention> relevant = outcome.relevant();
@@ -111,7 +117,8 @@ public class RagAssistUseCase {
             AiAssistResponse response = AiDiagnosticTraceFactory.toResponse(
                     relevant,
                     suggestionResult.suggestions(),
-                    trace
+                    trace,
+                    matchSchemas(request)
             );
 
             log.info(
@@ -168,8 +175,15 @@ public class RagAssistUseCase {
                         UNAVAILABLE_SUMMARY,
                         UNAVAILABLE_ADVICE
                 ),
-                trace
+                trace,
+                List.of()
         );
+    }
+
+    private List<EquipmentSchemaDto> matchSchemas(AiAssistRequest request) {
+        QuerySignals signals = QuerySignalExtractor.extract(request.description());
+        SearchContext context = searchContextFactory.from(request, signals);
+        return equipmentSchemaMatcher.match(signals, context);
     }
 
     private void publishAiUnavailable(String reason) {

@@ -10,6 +10,7 @@ export type AssistErrorKind =
   | 'timeout'
   | 'empty'
   | 'cancelled'
+  | 'validation'
   | 'unknown';
 
 export interface AssistError {

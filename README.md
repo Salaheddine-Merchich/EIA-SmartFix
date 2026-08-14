@@ -234,7 +234,28 @@ docker exec eia-ollama ollama pull llama3.2
 .\scripts\enrich-rag-complete.ps1 -DbPassword '<db>' -AdminPassword 'Password123!'
 ```
 
-Requêtes test assistant IA : `2310 overcurrent ACS880 filature`, `E.oC1 VEICHI`, `A.LuT marche à sec`, `OUt1 Goodrive`, `E21 Hitachi SJ200`.
+Requêtes test assistant IA : `2310 overcurrent ACS880 filature`, `E.oC1 VEICHI`, `A.LuT marche à sec`, `OUt1 Goodrive`, `E21 Hitachi SJ200`, `Pompe PV ne démarre plus station solaire` (schémas VEICHI X1 + Goodrive PV).
+
+## Schémas équipement (V25)
+
+Schémas techniques PNG **read-only** (seed PDF), affichés dans l’assistant IA uniquement — **aucun upload utilisateur**.
+
+| Élément | Détail |
+|---------|--------|
+| Table | `equipment_schemas` (FK `equipment_id`, `trigger_keywords`, `file_path`) |
+| Stockage | `{FILE_STORAGE_PATH}/equipment/{equipmentId}/` |
+| API | `GET /api/v1/equipment/{id}/schemas/{schemaId}/download` (lecture seule) |
+| RAG | `EquipmentSchemaMatcher` — max 3 schémas par requête (keywords + zone/famille) |
+| UI | Icône schéma dans la bulle assistant → choix équipement → liste PNG → lightbox |
+| Seed | 20 pages extraites des 5 PDFs constructeur (classpath → copie au démarrage) |
+
+Extraire ou régénérer les PNG depuis les PDFs locaux :
+
+```powershell
+python scripts/extract-equipment-schemas.py --pdf-dir "C:\Users\<vous>\Desktop\Data OCp"
+```
+
+Les fichiers seed sont versionnés sous `backend/src/main/resources/seed/equipment-schemas/`. Au démarrage, `EquipmentSchemaSeedConfiguration` les copie dans le volume documents si absents.
 
 ## Scripts RAG (dev)
 

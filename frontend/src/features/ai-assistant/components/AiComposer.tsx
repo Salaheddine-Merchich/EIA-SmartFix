@@ -1,6 +1,7 @@
 import { type KeyboardEvent, useState, useRef, useEffect, memo } from 'react';
 import { EnterpriseButton } from '@/design-system';
 import { ASSISTANT_LAYOUT } from '../constants/layout';
+import { isValidAssistQuery } from '../utils/isValidAssistQuery';
 
 interface AiComposerProps {
   loading: boolean;
@@ -26,7 +27,9 @@ function AiComposerComponent({
     onInitialValueConsumed?.();
   }, [initialValue, onInitialValueConsumed]);
 
-  const canSend = value.trim().length > 0 && !loading;
+  const trimmedValue = value.trim();
+  const canSend = isValidAssistQuery(trimmedValue) && !loading;
+  const showMinLengthHint = trimmedValue.length > 0 && !isValidAssistQuery(trimmedValue);
   const maxChars = 1000;
   const charCount = value.length;
   const isNearLimit = charCount > maxChars * 0.8;
@@ -107,8 +110,12 @@ function AiComposerComponent({
         </div>
 
         <div className="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-          <span>Entrée pour envoyer · Maj+Entrée pour nouvelle ligne</span>
-          <span className={isNearLimit ? 'font-medium text-amber-600' : 'tabular-nums text-slate-400'}>
+          <span>
+            {showMinLengthHint
+              ? 'Décrivez un symptôme, un équipement ou un code défaut du parc OCP.'
+              : 'Entrée pour envoyer · Maj+Entrée pour nouvelle ligne'}
+          </span>
+          <span className={`${isNearLimit ? 'font-medium text-amber-600' : 'tabular-nums text-slate-400'} ${showMinLengthHint ? 'text-amber-600' : ''}`}>
             {charCount}/{maxChars}
           </span>
         </div>

@@ -15,6 +15,8 @@ export function getAssistErrorTitle(kind: AssistErrorKind): string {
       return 'Erreur de connexion';
     case 'empty':
       return 'Peu de correspondances';
+    case 'validation':
+      return 'Description trop courte';
     default:
       return 'Impossible de traiter la demande';
   }

@@ -11,13 +11,27 @@ import { createAiConversationWrapper } from '../test/aiConversationTestUtils';
 
 
 vi.mock('@/shared/api', () => ({
-
   aiApi: {
-
     assist: vi.fn(),
-
+    listConversations: vi.fn(async () => []),
+    createConversation: vi.fn(async (title?: string) => ({
+      id: 'server-conv-1',
+      title: title ?? 'Nouvelle conversation',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messages: [],
+    })),
+    appendConversationMessages: vi.fn(async (id: string) => ({
+      id,
+      title: 'saved',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messages: [],
+    })),
+    getConversation: vi.fn(),
+    deleteConversation: vi.fn(),
+    deleteAllConversations: vi.fn(),
   },
-
 }));
 
 
@@ -287,56 +301,28 @@ describe('useAiConversation', () => {
 
 
 
-  it('persists conversation to localStorage', async () => {
-
-    vi.useFakeTimers();
-
+  it('persists conversation via the API', async () => {
     assistMock.mockResolvedValue({
-
       ...mockResponse,
-
       similarInterventions: [],
-
       suggestions: {
-
         summary: 'OK',
-
         probableCauses: ['Cause'],
-
         correctiveActions: ['Action'],
-
         advice: 'Conseil',
-
       },
-
     });
-
-
 
     const { result } = renderHook(() => useAiConversation(), { wrapper });
 
-
-
     await act(async () => {
-
       await result.current.sendMessage('Panne persistée');
-
     });
 
-
-
-    await act(async () => {
-
-      vi.advanceTimersByTime(350);
-
+    await waitFor(() => {
+      expect(aiApi.createConversation).toHaveBeenCalled();
+      expect(aiApi.appendConversationMessages).toHaveBeenCalled();
     });
-
-
-
-    expect(localStorage.getItem('eia-smartfix:ai-conversation:test@ocp.ma')).toBeTruthy();
-
-    vi.useRealTimers();
-
   });
 
 });

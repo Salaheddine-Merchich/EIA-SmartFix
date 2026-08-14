@@ -29,6 +29,7 @@ public final class DashboardDto {
             long rejectedInterventions,
             long knowledgeDocuments,
             long activeKnowledgeDocuments,
+            long activeEquipmentSchemas,
             long indexedInterventions,
             Double mttrMinutes,
             Double mtbfHours,

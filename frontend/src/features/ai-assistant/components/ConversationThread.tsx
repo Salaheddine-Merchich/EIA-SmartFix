@@ -31,28 +31,45 @@ function ConversationThreadComponent({
 
   if (isEmpty) {
     return (
-      <div className="flex h-full flex-col items-center justify-center px-4 py-10 text-center sm:px-6">
-        <div className="mx-auto w-full max-w-lg">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Conversation vide</h2>
-          <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-            Décrivez une panne, un symptôme ou un code défaut. L&apos;assistant s&apos;appuie sur les
-            interventions validées pour proposer des pistes — jamais un diagnostic définitif.
+      <div
+        className={`flex h-full flex-col items-stretch justify-start overflow-y-auto ${ASSISTANT_LAYOUT.pagePaddingX} py-8 sm:py-10`}
+      >
+        <div className={`mx-auto w-full ${ASSISTANT_LAYOUT.threadMaxWidth}`}>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Par où commencer ?</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+            Décrivez une panne, un code défaut ou un équipement du parc. L&apos;assistant s&apos;appuie sur les
+            interventions validées — jamais un diagnostic définitif.
           </p>
 
-          <div className="mt-8 space-y-2 text-left">
+          <p className="mt-8 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Exemples du parc
+          </p>
+          <div className="mt-3 grid auto-rows-fr grid-cols-1 items-stretch gap-3 sm:grid-cols-2">
             {EXAMPLE_QUERIES.map((example) => (
               <button
                 key={example.text}
                 type="button"
                 onClick={() => onExampleSelect?.(example.text)}
-                className="w-full rounded-lg border border-slate-200 bg-white p-3.5 text-left transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:bg-slate-800"
+                className="group flex h-full min-h-[6.5rem] w-full items-start gap-3 rounded-lg border border-slate-200 bg-white p-3.5 text-left transition-colors hover:border-emerald-500/40 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-emerald-500/40 dark:hover:bg-slate-800"
               >
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                <div className="min-w-0 flex-1">
+                  <span className="inline-flex rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
                     {example.category}
+                  </span>
+                  <p className="mt-1.5 line-clamp-2 text-sm font-medium text-slate-800 dark:text-slate-200">
+                    {example.text}
                   </p>
-                  <p className="mt-1 text-sm font-medium text-slate-800 dark:text-slate-200">{example.text}</p>
                 </div>
+                <svg
+                  className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-emerald-600 dark:group-hover:text-emerald-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.8}
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
               </button>
             ))}
           </div>

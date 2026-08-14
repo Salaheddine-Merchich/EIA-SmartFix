@@ -1,10 +1,11 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { EnterpriseDrawer } from '@/design-system';
+import { EnterpriseDrawer, useEnterpriseConfirm } from '@/design-system';
 import { AiAssistantHeader } from '../components/AiAssistantHeader';
 import { AiComposer } from '../components/AiComposer';
 import { ConversationThread } from '../components/ConversationThread';
 import { SuggestionCards } from '../components/SuggestionCards';
+import { ConversationHistorySidebar } from '../components/ConversationHistorySidebar';
 import { ConversationStateBanner } from '../components/ConversationStateBanner';
 import { AiDiagnosticTracePanel } from '../explainability';
 import { useAiConversation } from '../hooks/useAiConversation';
@@ -20,6 +21,7 @@ interface AiAssistantLocationState {
 
 export default function AiAssistantPage() {
   const location = useLocation();
+  const { confirm } = useEnterpriseConfirm();
   const {
     messages,
     loading,
@@ -30,6 +32,12 @@ export default function AiAssistantPage() {
     sendMessage,
     cancelGeneration,
     clearConversation,
+    history,
+    historyLoading,
+    conversationId,
+    openConversation,
+    deleteConversation,
+    clearAllHistory,
     setAssistContext,
     setComposerPrefill,
     composerPrefill,
@@ -58,6 +66,8 @@ export default function AiAssistantPage() {
     return last?.role === 'assistant' && last.error?.kind === 'cancelled';
   }, [messages]);
 
+  const showSimilarPanel = messages.length > 0 || loading;
+
   const openTrace = (trace: AiDiagnosticTrace) => {
     setActiveTrace(trace);
     setTraceOpen(true);
@@ -67,8 +77,6 @@ export default function AiAssistantPage() {
     <div className="flex h-full min-h-0 flex-col bg-white dark:bg-slate-950">
       <AiAssistantHeader
         status={status}
-        onNewConversation={clearConversation}
-        hasMessages={messages.length > 0}
         contextHint={
           assistContext.failureId || assistContext.equipmentId
             ? 'Contexte panne actif — les suggestions seront ciblées sur cet équipement.'
@@ -77,6 +85,47 @@ export default function AiAssistantPage() {
       />
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+        <div className="shrink-0 lg:h-full">
+          <ConversationHistorySidebar
+            items={history}
+            activeId={conversationId}
+            loading={historyLoading}
+            onSelect={(id) => {
+              void openConversation(id);
+            }}
+            onNew={clearConversation}
+            onDelete={(id) => {
+              void (async () => {
+                const ok = await confirm({
+                  title: 'Supprimer cette conversation',
+                  message:
+                    'Cette conversation sera définitivement retirée de votre historique. Cette action est irréversible.',
+                  confirmLabel: 'Supprimer',
+                  cancelLabel: 'Annuler',
+                  variant: 'danger',
+                });
+                if (ok) {
+                  await deleteConversation(id);
+                }
+              })();
+            }}
+            onDeleteAll={() => {
+              void (async () => {
+                const ok = await confirm({
+                  title: 'Vider l’historique',
+                  message:
+                    'Toutes vos conversations avec l’assistant seront définitivement supprimées. Cette action est irréversible.',
+                  confirmLabel: 'Tout supprimer',
+                  cancelLabel: 'Annuler',
+                  variant: 'danger',
+                });
+                if (ok) {
+                  await clearAllHistory();
+                }
+              })();
+            }}
+          />
+        </div>
         <section className="flex min-h-0 flex-1 flex-col lg:min-w-0">
           <div className="min-h-0 flex-1">
             <ConversationThread
@@ -106,9 +155,11 @@ export default function AiAssistantPage() {
           />
         </section>
 
-        <div className={`min-h-[240px] w-full ${ASSISTANT_LAYOUT.sidePanelWidth} shrink-0`}>
-          <SuggestionCards items={similarInterventions} loading={loading} />
-        </div>
+        {showSimilarPanel && (
+          <div className={`min-h-[240px] w-full ${ASSISTANT_LAYOUT.sidePanelWidth} shrink-0`}>
+            <SuggestionCards items={similarInterventions} loading={loading} />
+          </div>
+        )}
       </div>
 
       <EnterpriseDrawer

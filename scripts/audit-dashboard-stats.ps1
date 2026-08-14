@@ -38,6 +38,7 @@ $allOk = (Compare-Metric "draftInterventions" $api.draftInterventions (Invoke-Pg
 $allOk = (Compare-Metric "rejectedInterventions" $api.rejectedInterventions (Invoke-PgQuery "SELECT COUNT(*) FROM interventions WHERE statut_validation = 'REJETEE';")) -and $allOk
 $allOk = (Compare-Metric "knowledgeDocuments" $api.knowledgeDocuments (Invoke-PgQuery "SELECT COUNT(*) FROM knowledge_documents;")) -and $allOk
 $allOk = (Compare-Metric "activeKnowledgeDocuments" $api.activeKnowledgeDocuments (Invoke-PgQuery "SELECT COUNT(*) FROM knowledge_documents WHERE active = true;")) -and $allOk
+$allOk = (Compare-Metric "activeEquipmentSchemas" $api.activeEquipmentSchemas (Invoke-PgQuery "SELECT COUNT(*) FROM equipment_schemas WHERE active = true;")) -and $allOk
 $allOk = (Compare-Metric "indexedInterventions" $api.indexedInterventions (Invoke-PgQuery "SELECT COUNT(*) FROM intervention_embeddings;")) -and $allOk
 
 Write-Host "`n--- Tendance mensuelle (API) ---" -ForegroundColor Yellow

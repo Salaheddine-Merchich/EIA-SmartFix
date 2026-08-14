@@ -7,6 +7,8 @@ import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.Set;
 
@@ -44,6 +46,29 @@ class AiAssistRequestValidationTest {
     void validDescription_isAccepted() {
         Set<ConstraintViolation<AiAssistRequest>> violations =
                 validator.validate(new AiAssistRequest(null, null, "Variateur en défaut", 3));
+        assertTrue(violations.isEmpty());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"I", "P", "iiiiiiiiii", "abcdefghij"})
+    void noiseDescription_isInvalid(String description) {
+        Set<ConstraintViolation<AiAssistRequest>> violations =
+                validator.validate(new AiAssistRequest(null, null, description, null));
+        assertFalse(violations.isEmpty());
+        assertTrue(violations.stream().anyMatch(v -> "description".equals(v.getPropertyPath().toString())));
+    }
+
+    @Test
+    void faultCodeDescription_isAccepted() {
+        Set<ConstraintViolation<AiAssistRequest>> violations =
+                validator.validate(new AiAssistRequest(null, null, "E21", null));
+        assertTrue(violations.isEmpty());
+    }
+
+    @Test
+    void longDescription_isAccepted() {
+        Set<ConstraintViolation<AiAssistRequest>> violations =
+                validator.validate(new AiAssistRequest(null, null, "Pompe PV ne démarre plus", null));
         assertTrue(violations.isEmpty());
     }
 }

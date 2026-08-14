@@ -2,6 +2,8 @@ package com.ocp.eia.modules.knowledge.application;
 
 import com.ocp.eia.application.dto.AiDto.AiAssistResponse;
 import com.ocp.eia.application.dto.AiDto.AiSuggestions;
+import com.ocp.eia.application.dto.AiDto.EquipmentSchemaDto;
+import com.ocp.eia.application.dto.AiDto.RetrievedSchemaDto;
 import com.ocp.eia.application.dto.AiDto.SimilarInterventionDto;
 import com.ocp.eia.modules.knowledge.domain.model.AiDiagnosticTrace;
 import com.ocp.eia.modules.knowledge.domain.model.RetrievedDocument;
@@ -78,13 +80,44 @@ public final class AiDiagnosticTraceFactory {
     public static AiAssistResponse toResponse(
             List<SimilarIntervention> relevant,
             AiSuggestions suggestions,
-            AiDiagnosticTrace trace
+            AiDiagnosticTrace trace,
+            List<EquipmentSchemaDto> relevantSchemas
     ) {
         return new AiAssistResponse(
                 toSimilarDtos(relevant),
                 suggestions,
                 DISCLAIMER,
-                AiDiagnosticTraceMapper.toDto(trace)
+                relevantSchemas != null ? relevantSchemas : List.of(),
+                AiDiagnosticTraceMapper.toDto(trace, relevantSchemas)
         );
+    }
+
+    public static AiAssistResponse toResponse(
+            List<SimilarIntervention> relevant,
+            AiSuggestions suggestions,
+            AiDiagnosticTrace trace
+    ) {
+        return toResponse(relevant, suggestions, trace, List.of());
+    }
+
+    public static List<RetrievedSchemaDto> toRetrievedSchemaDtos(List<EquipmentSchemaDto> schemas) {
+        if (schemas == null || schemas.isEmpty()) {
+            return List.of();
+        }
+        return schemas.stream()
+                .map(s -> new RetrievedSchemaDto(
+                        s.schemaId(),
+                        s.equipmentId(),
+                        s.equipmentCode(),
+                        s.equipmentDesignation(),
+                        s.label(),
+                        s.schemaType(),
+                        s.sourcePdf(),
+                        s.sourcePage(),
+                        s.caption(),
+                        s.totalSchemasForEquipment(),
+                        s.downloadUrl()
+                ))
+                .toList();
     }
 }

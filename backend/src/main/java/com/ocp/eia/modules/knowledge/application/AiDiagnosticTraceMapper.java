@@ -1,6 +1,7 @@
 package com.ocp.eia.modules.knowledge.application;
 
 import com.ocp.eia.application.dto.AiDto.AiDiagnosticTraceDto;
+import com.ocp.eia.application.dto.AiDto.EquipmentSchemaDto;
 import com.ocp.eia.application.dto.AiDto.RetrievalStepDto;
 import com.ocp.eia.application.dto.AiDto.RetrievedDocumentDto;
 import com.ocp.eia.modules.knowledge.domain.model.AiDiagnosticTrace;
@@ -14,6 +15,10 @@ public final class AiDiagnosticTraceMapper {
     private AiDiagnosticTraceMapper() {}
 
     public static AiDiagnosticTraceDto toDto(AiDiagnosticTrace trace) {
+        return toDto(trace, List.of());
+    }
+
+    public static AiDiagnosticTraceDto toDto(AiDiagnosticTrace trace, List<EquipmentSchemaDto> schemas) {
         List<RetrievedDocumentDto> documents = trace.retrievedDocuments().stream()
                 .map(AiDiagnosticTraceMapper::toDocumentDto)
                 .toList();
@@ -21,6 +26,7 @@ public final class AiDiagnosticTraceMapper {
         return new AiDiagnosticTraceDto(
                 trace.query(),
                 documents,
+                AiDiagnosticTraceFactory.toRetrievedSchemaDtos(schemas),
                 buildRetrievalSteps(trace),
                 trace.vectorResultCount(),
                 trace.textResultCount(),

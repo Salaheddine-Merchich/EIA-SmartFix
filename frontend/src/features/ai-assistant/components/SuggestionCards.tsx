@@ -1,6 +1,6 @@
 import { useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { EnterpriseEmptyState, EnterpriseLoader } from '@/design-system';
+import { EnterpriseLoader } from '@/design-system';
 import { interventionsApi } from '@/shared/api';
 import type { SimilarInterventionItem } from '../types';
 
@@ -45,10 +45,12 @@ function SuggestionCardsComponent({ items, loading }: SuggestionCardsProps) {
         )}
 
         {!loading && items.length === 0 && (
-          <EnterpriseEmptyState
-            title="Aucune suggestion"
-            description="Envoyez une description pour voir les interventions similaires."
-          />
+          <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/40">
+            <p className="text-sm font-medium text-slate-800 dark:text-slate-200">Aucune intervention similaire</p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              Aucune fiche validée ne correspond suffisamment à cette demande.
+            </p>
+          </div>
         )}
 
         {openError && (

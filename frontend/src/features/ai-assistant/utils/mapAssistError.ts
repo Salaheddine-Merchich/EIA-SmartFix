@@ -44,6 +44,15 @@ export function mapAssistError(error: unknown): AssistError {
       };
     }
 
+    if (status === 400) {
+      return {
+        kind: 'validation',
+        message:
+          bodyMessage ||
+          'Décrivez la panne clairement (symptôme, équipement ou code défaut).',
+      };
+    }
+
     if (status === 504 || status === 408) {
       return {
         kind: 'timeout',

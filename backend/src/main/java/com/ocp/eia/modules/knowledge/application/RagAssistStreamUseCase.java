@@ -5,7 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ocp.eia.application.dto.AiDto.AiAssistRequest;
 import com.ocp.eia.application.dto.AiDto.AiAssistResponse;
 import com.ocp.eia.application.dto.AiDto.AiSuggestions;
+import com.ocp.eia.application.dto.AiDto.EquipmentSchemaDto;
 import com.ocp.eia.config.AppProperties;
+import com.ocp.eia.modules.knowledge.domain.model.QuerySignals;
+import com.ocp.eia.modules.knowledge.domain.model.SearchContext;
 import com.ocp.eia.modules.knowledge.application.RagRetrievalService.RetrievalOutcome;
 import com.ocp.eia.modules.knowledge.application.RagSuggestionService.SuggestionResult;
 import com.ocp.eia.modules.knowledge.domain.model.AiDiagnosticTrace;
@@ -49,6 +52,8 @@ public class RagAssistStreamUseCase {
     private final RagRetrievalMetrics ragRetrievalMetrics;
     private final AiDiagnosticStatsService diagnosticStatsService;
     private final ApplicationEventPublisher eventPublisher;
+    private final EquipmentSchemaMatcher equipmentSchemaMatcher;
+    private final SearchContextFactory searchContextFactory;
 
     /**
      * Génère une assistance IA en streaming via Server-Sent Events
@@ -65,6 +70,22 @@ public class RagAssistStreamUseCase {
 
         return Flux.<ServerSentEvent<String>>create(sink -> {
                     try {
+                        if (!AssistQueryValidator.isValid(description)) {
+                            recordFallbackOnce(recordedOutcome);
+                            AiSuggestions vague = ragSuggestionParser.vagueQueryFallback();
+                            sink.next(ServerSentEvent.<String>builder()
+                                    .event("fallback")
+                                    .data("Description trop vague")
+                                    .build());
+                            RetrievalOutcome emptyRetrieval = emptyRetrievalOutcome();
+                            sink.next(ServerSentEvent.<String>builder()
+                                    .event("complete")
+                                    .data(serializeResponse(buildResponse(request, emptyRetrieval, vague, 0L)))
+                                    .build());
+                            sink.complete();
+                            return;
+                        }
+
                         sink.next(ServerSentEvent.<String>builder()
                                 .event("status")
                                 .data("Recherche des documents similaires...")
@@ -111,19 +132,21 @@ public class RagAssistStreamUseCase {
                                         retrieval.relevant().size(), retrieval.knowledgeDocuments().size()))
                                 .build());
 
-                        if (retrieval.relevant().isEmpty() && retrieval.knowledgeDocuments().isEmpty()) {
+                        if (!ragSuggestionService.hasProjectEvidence(
+                                request.description(),
+                                retrieval.relevant(),
+                                retrieval.knowledgeDocuments())) {
+                            recordFallbackOnce(recordedOutcome);
+                            AiSuggestions insufficient = ragSuggestionParser.insufficientEvidenceFallback();
                             sink.next(ServerSentEvent.<String>builder()
                                     .event("fallback")
-                                    .data("Aucun document similaire trouvé, conseil générique...")
+                                    .data("Aucune donnée fiable du projet pour cette description")
                                     .build());
-
-                            recordFallbackOnce(recordedOutcome);
-                            AiSuggestions fallback = ragSuggestionParser.noEvidenceFallback();
                             sink.next(ServerSentEvent.<String>builder()
                                     .event("complete")
-                                    .data(serializeResponse(buildResponse(request, retrieval, fallback, 0L)))
+                                    .data(serializeResponse(buildResponse(
+                                            request, retrieval, insufficient, 0L)))
                                     .build());
-
                             sink.complete();
                             return;
                         }
@@ -199,14 +222,16 @@ public class RagAssistStreamUseCase {
                                     } catch (Exception e) {
                                         log.error("Erreur parsing réponse streaming: {}", e.getMessage());
                                         recordFallbackOnce(recordedOutcome);
-                                        AiSuggestions fallback = ragSuggestionParser.fallbackFromHistory(
-                                                retrieval.relevant(),
-                                                retrieval.knowledgeDocuments()
-                                        );
+                                        AiSuggestions fallback = retrieval.relevant().isEmpty()
+                                                ? ragSuggestionParser.insufficientEvidenceFallback()
+                                                : ragSuggestionParser.fallbackFromHistory(
+                                                        retrieval.relevant(),
+                                                        retrieval.knowledgeDocuments()
+                                                );
 
                                         sink.next(ServerSentEvent.<String>builder()
                                                 .event("error")
-                                                .data("Erreur de parsing, utilisation de conseil générique")
+                                                .data("Erreur de parsing, réponse basée sur les données disponibles")
                                                 .build());
 
                                         sink.next(ServerSentEvent.<String>builder()
@@ -226,10 +251,12 @@ public class RagAssistStreamUseCase {
                                             error.getMessage()
                                     );
                                     recordFallbackOnce(recordedOutcome);
-                                    AiSuggestions fallback = ragSuggestionParser.fallbackFromHistory(
-                                            retrieval.relevant(),
-                                            retrieval.knowledgeDocuments()
-                                    );
+                                    AiSuggestions fallback = retrieval.relevant().isEmpty()
+                                            ? ragSuggestionParser.insufficientEvidenceFallback()
+                                            : ragSuggestionParser.fallbackFromHistory(
+                                                    retrieval.relevant(),
+                                                    retrieval.knowledgeDocuments()
+                                            );
 
                                     sink.next(ServerSentEvent.<String>builder()
                                             .event("error")
@@ -275,6 +302,25 @@ public class RagAssistStreamUseCase {
                 .doFinally(signal -> ragObservabilityService.decrementActiveQueries());
     }
 
+    private static RetrievalOutcome emptyRetrievalOutcome() {
+        return new RetrievalOutcome(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                0,
+                0,
+                0,
+                "SKIPPED",
+                false,
+                0L,
+                false,
+                null,
+                false,
+                null
+        );
+    }
+
     private void recordSuccessOnce(AtomicBoolean recordedOutcome) {
         if (recordedOutcome.compareAndSet(false, true)) {
             ragObservabilityService.recordSuccessfulQuery();
@@ -314,7 +360,18 @@ public class RagAssistStreamUseCase {
             ragObservabilityService.recordLowConfidenceResponse();
         }
 
-        return AiDiagnosticTraceFactory.toResponse(retrieval.relevant(), suggestions, trace);
+        return AiDiagnosticTraceFactory.toResponse(
+                retrieval.relevant(),
+                suggestions,
+                trace,
+                matchSchemas(request)
+        );
+    }
+
+    private List<EquipmentSchemaDto> matchSchemas(AiAssistRequest request) {
+        QuerySignals signals = QuerySignalExtractor.extract(request.description());
+        SearchContext context = searchContextFactory.from(request, signals);
+        return equipmentSchemaMatcher.match(signals, context);
     }
 
     private String serializeResponse(AiAssistResponse response) {

@@ -46,6 +46,7 @@ class RagSuggestionServiceTest {
         lenient().when(ai.getRag()).thenReturn(rag);
         lenient().when(rag.isFastPathEnabled()).thenReturn(true);
         lenient().when(rag.getFastPathMinSimilarity()).thenReturn(0.85);
+        lenient().when(rag.getSimilarityThreshold()).thenReturn(0.70);
     }
 
     @Test
@@ -84,12 +85,12 @@ class RagSuggestionServiceTest {
                 "Conseil LLM"
         );
         when(ragPromptBuilder.systemPrompt()).thenReturn("system");
-        when(ragPromptBuilder.userPrompt(eq("Panne"), eq(List.of(similar)), eq(List.of()))).thenReturn("user");
+        when(ragPromptBuilder.userPrompt(eq("Panne variateur"), eq(List.of(similar)), eq(List.of()))).thenReturn("user");
         when(llmProvider.complete("system", "user")).thenReturn("{\"ok\":true}");
         when(ragSuggestionParser.parse("{\"ok\":true}")).thenReturn(llmSuggestions);
 
         RagSuggestionService.SuggestionResult result = service.generateSuggestions(
-                "Panne",
+                "Panne variateur",
                 List.of(similar),
                 List.of()
         );
@@ -141,13 +142,54 @@ class RagSuggestionServiceTest {
                 eq(List.of(lowerFirst, higherSecond)), eq(List.of()))).thenReturn(historySuggestions);
 
         RagSuggestionService.SuggestionResult result = service.generateSuggestions(
-                "Panne",
+                "Panne variateur",
                 List.of(lowerFirst, higherSecond),
                 List.of()
         );
 
         assertTrue(result.fastPathUsed());
         verify(llmProvider, never()).complete(anyString(), anyString());
+    }
+
+    @Test
+    void generateSuggestions_noiseQuery_skipsLlm() {
+        AiSuggestions vague = new AiSuggestions(
+                List.of("Description trop vague"),
+                List.of("Précisez"),
+                "Impossible",
+                "Reformulez"
+        );
+        when(ragSuggestionParser.vagueQueryFallback()).thenReturn(vague);
+
+        RagSuggestionService.SuggestionResult result = service.generateSuggestions(
+                "iiiiiiiiii",
+                List.of(),
+                List.of()
+        );
+
+        assertEquals(vague, result.suggestions());
+        verify(llmProvider, never()).complete(anyString(), anyString());
+    }
+
+    @Test
+    void generateSuggestions_noProjectEvidence_skipsLlm() {
+        AiSuggestions insufficient = new AiSuggestions(
+                List.of("Aucune donnée"),
+                List.of("Précisez l'équipement"),
+                "Pas assez de données",
+                "Reformulez"
+        );
+        when(ragSuggestionParser.insufficientEvidenceFallback()).thenReturn(insufficient);
+
+        RagSuggestionService.SuggestionResult result = service.generateSuggestions(
+                "comment faire une pizza maison",
+                List.of(),
+                List.of()
+        );
+
+        assertEquals(insufficient, result.suggestions());
+        verify(llmProvider, never()).complete(anyString(), anyString());
+        verify(ragObservabilityService).recordFallbackResponse();
     }
 
     private static SimilarIntervention similar(double score) {

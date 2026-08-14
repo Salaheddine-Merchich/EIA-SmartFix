@@ -3,6 +3,7 @@ package com.ocp.eia.modules.analytics.application;
 import com.ocp.eia.application.dto.DashboardDto.*;
 import com.ocp.eia.domain.model.StatutPanne;
 import com.ocp.eia.domain.model.StatutValidation;
+import com.ocp.eia.domain.repository.EquipmentSchemaRepository;
 import com.ocp.eia.domain.repository.FailureRepository;
 import com.ocp.eia.domain.repository.InterventionRepository;
 import com.ocp.eia.modules.knowledge.application.AiDiagnosticStatsService;
@@ -43,6 +44,7 @@ public class DashboardUseCase {
     private final FailureRepository failureRepository;
     private final InterventionRepository interventionRepository;
     private final KnowledgeDocumentRepository knowledgeDocumentRepository;
+    private final EquipmentSchemaRepository equipmentSchemaRepository;
     private final JdbcTemplate jdbcTemplate;
     private final ObjectProvider<AiDiagnosticStatsService> aiDiagnosticStatsService;
 
@@ -56,6 +58,7 @@ public class DashboardUseCase {
         long rejectedInterventions = interventionRepository.countByStatutValidation(StatutValidation.REJETEE);
         long knowledgeDocuments = knowledgeDocumentRepository.count();
         long activeKnowledgeDocuments = knowledgeDocumentRepository.countByActiveTrue();
+        long activeEquipmentSchemas = equipmentSchemaRepository.countByActiveTrue();
         long indexedInterventions = countIndexedInterventions();
 
         Double mttr = interventionRepository.calculateMttr();
@@ -94,6 +97,7 @@ public class DashboardUseCase {
                 rejectedInterventions,
                 knowledgeDocuments,
                 activeKnowledgeDocuments,
+                activeEquipmentSchemas,
                 indexedInterventions,
                 mttr,
                 mtbf,

@@ -3,6 +3,7 @@ package com.ocp.eia.modules.analytics.application;
 import com.ocp.eia.application.dto.DashboardDto.MonthlyTrendItem;
 import com.ocp.eia.domain.model.StatutPanne;
 import com.ocp.eia.domain.model.StatutValidation;
+import com.ocp.eia.domain.repository.EquipmentSchemaRepository;
 import com.ocp.eia.domain.repository.FailureRepository;
 import com.ocp.eia.domain.repository.InterventionRepository;
 import com.ocp.eia.modules.knowledge.application.AiDiagnosticStatsService;
@@ -32,6 +33,7 @@ class DashboardUseCaseTest {
     @Mock private FailureRepository failureRepository;
     @Mock private InterventionRepository interventionRepository;
     @Mock private KnowledgeDocumentRepository knowledgeDocumentRepository;
+    @Mock private EquipmentSchemaRepository equipmentSchemaRepository;
     @Mock private JdbcTemplate jdbcTemplate;
 
     private DashboardUseCase dashboardUseCase;
@@ -42,7 +44,7 @@ class DashboardUseCaseTest {
         lenient().when(aiDiagnosticStatsService.getIfAvailable()).thenReturn(null);
         dashboardUseCase = new DashboardUseCase(
                 failureRepository, interventionRepository, knowledgeDocumentRepository,
-                jdbcTemplate, aiDiagnosticStatsService);
+                equipmentSchemaRepository, jdbcTemplate, aiDiagnosticStatsService);
     }
 
     @Test
@@ -56,6 +58,7 @@ class DashboardUseCaseTest {
         when(interventionRepository.countByStatutValidation(StatutValidation.REJETEE)).thenReturn(1L);
         when(knowledgeDocumentRepository.count()).thenReturn(13L);
         when(knowledgeDocumentRepository.countByActiveTrue()).thenReturn(11L);
+        when(equipmentSchemaRepository.countByActiveTrue()).thenReturn(20L);
         when(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM intervention_embeddings", Long.class)).thenReturn(26L);
         when(interventionRepository.calculateMttr()).thenReturn(90.0);
         when(interventionRepository.findTopFailingEquipment(5)).thenReturn(List.<Object[]>of(
@@ -87,6 +90,7 @@ class DashboardUseCaseTest {
         assertEquals(1L, response.rejectedInterventions());
         assertEquals(13L, response.knowledgeDocuments());
         assertEquals(11L, response.activeKnowledgeDocuments());
+        assertEquals(20L, response.activeEquipmentSchemas());
         assertEquals(26L, response.indexedInterventions());
         assertEquals(90.0, response.mttrMinutes());
         assertEquals(120.0, response.mtbfHours());

@@ -4,27 +4,34 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { aiApi } from '@/shared/api';
+import type { AiConversationSummary } from '@/shared/types';
 
 import { useAssistSend } from '../hooks/useAssistSend';
-import { useConversationPersistence } from '../hooks/useConversationPersistence';
 import { useLoadingStatusMessage } from '../hooks/useLoadingStatusMessage';
 import type {
+  AssistantMessage,
   AssistantStatus,
   AssistContext,
   Conversation,
   ConversationMessage,
   SimilarInterventionItem,
 } from '../types';
-import { getConversationStorageKey } from '../utils/conversationStorage';
+import { createConversation } from '../utils/conversationStorage';
 import { getSimilarInterventions } from '../utils/conversationMessageHelpers';
+import { mapConversationDetail } from '../utils/mapConversationDetail';
 
 interface AiConversationContextValue {
   conversation: Conversation;
+  conversationId: string | null;
+  history: AiConversationSummary[];
+  historyLoading: boolean;
   messages: ConversationMessage[];
   loading: boolean;
   loadingMessage: string;
@@ -35,6 +42,9 @@ interface AiConversationContextValue {
   sendMessage: (rawContent: string) => Promise<void>;
   cancelGeneration: () => void;
   clearConversation: () => void;
+  openConversation: (id: string) => Promise<void>;
+  deleteConversation: (id: string) => Promise<void>;
+  clearAllHistory: () => Promise<void>;
   setAssistContext: (context: AssistContext) => void;
   setComposerPrefill: (value: string) => void;
   clearComposerPrefill: () => void;
@@ -44,18 +54,59 @@ const AiConversationContext = createContext<AiConversationContextValue | null>(n
 
 export function AiConversationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const storageKey = getConversationStorageKey(user?.email);
   const [status, setStatus] = useState<AssistantStatus>('online');
   const [assistContext, setAssistContext] = useState<AssistContext>({});
   const [composerPrefill, setComposerPrefill] = useState('');
+  const [conversation, setConversation] = useState<Conversation>(createConversation);
+  const [history, setHistory] = useState<AiConversationSummary[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const conversationIdRef = useRef<string | null>(null);
 
-  const { conversation, setConversation, resetConversation } =
-    useConversationPersistence(storageKey);
+  const refreshHistory = useCallback(async () => {
+    const items = await aiApi.listConversations();
+    setHistory(items);
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setHistory([]);
+      return;
+    }
+    setHistoryLoading(true);
+    refreshHistory()
+      .catch(() => setHistory([]))
+      .finally(() => setHistoryLoading(false));
+  }, [user, refreshHistory]);
+
+  const persistTurn = useCallback(
+    async (userContent: string, assistant: AssistantMessage) => {
+      if (!assistant.response) return;
+      try {
+        let id = conversationIdRef.current;
+        if (!id) {
+          const created = await aiApi.createConversation(userContent.slice(0, 120));
+          id = created.id;
+          conversationIdRef.current = id;
+          setConversation((prev) => ({
+            ...prev,
+            id: created.id,
+            title: created.title || prev.title,
+          }));
+        }
+        await aiApi.appendConversationMessages(id, userContent, assistant.response);
+        await refreshHistory();
+      } catch {
+        // Keep the local thread if persistence fails.
+      }
+    },
+    [refreshHistory],
+  );
 
   const { loading, setLoading, abortActive, sendMessage, cancelGeneration } = useAssistSend({
     setConversation,
     setStatus,
     assistContext,
+    onTurnComplete: persistTurn,
   });
 
   const loadingMessage = useLoadingStatusMessage(loading);
@@ -64,7 +115,11 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
     abortActive(true);
     setLoading(false);
     setStatus('online');
-  }, [storageKey, abortActive, setLoading]);
+    conversationIdRef.current = null;
+    setConversation(createConversation());
+    setAssistContext({});
+    setComposerPrefill('');
+  }, [user?.email, abortActive, setLoading]);
 
   useEffect(() => {
     if (!user) {
@@ -75,11 +130,43 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
   const clearConversation = useCallback(() => {
     abortActive(true);
     setLoading(false);
-    resetConversation();
+    conversationIdRef.current = null;
+    setConversation(createConversation());
     setStatus('online');
     setAssistContext({});
     setComposerPrefill('');
-  }, [abortActive, resetConversation, setLoading]);
+  }, [abortActive, setLoading]);
+
+  const openConversation = useCallback(
+    async (id: string) => {
+      abortActive(true);
+      setLoading(false);
+      const detail = await aiApi.getConversation(id);
+      conversationIdRef.current = detail.id;
+      setConversation(mapConversationDetail(detail));
+      setStatus('online');
+      setAssistContext({});
+      setComposerPrefill('');
+    },
+    [abortActive, setLoading],
+  );
+
+  const deleteConversation = useCallback(
+    async (id: string) => {
+      await aiApi.deleteConversation(id);
+      if (conversationIdRef.current === id) {
+        clearConversation();
+      }
+      await refreshHistory();
+    },
+    [clearConversation, refreshHistory],
+  );
+
+  const clearAllHistory = useCallback(async () => {
+    await aiApi.deleteAllConversations();
+    clearConversation();
+    setHistory([]);
+  }, [clearConversation]);
 
   const clearComposerPrefill = useCallback(() => {
     setComposerPrefill('');
@@ -93,6 +180,9 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       conversation,
+      conversationId: conversationIdRef.current,
+      history,
+      historyLoading,
       messages: conversation.messages as ConversationMessage[],
       loading,
       loadingMessage,
@@ -103,12 +193,17 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
       sendMessage,
       cancelGeneration,
       clearConversation,
+      openConversation,
+      deleteConversation,
+      clearAllHistory,
       setAssistContext,
       setComposerPrefill,
       clearComposerPrefill,
     }),
     [
       conversation,
+      history,
+      historyLoading,
       loading,
       loadingMessage,
       status,
@@ -118,6 +213,9 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
       sendMessage,
       cancelGeneration,
       clearConversation,
+      openConversation,
+      deleteConversation,
+      clearAllHistory,
       clearComposerPrefill,
     ],
   );

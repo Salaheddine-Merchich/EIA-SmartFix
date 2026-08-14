@@ -38,10 +38,14 @@ public class FileStorageService {
     private final AppProperties appProperties;
 
     public StoredFile store(UUID interventionId, MultipartFile file) {
+        return storeUnderSubdir(interventionId.toString(), file, "intervention");
+    }
+
+    private StoredFile storeUnderSubdir(String subdir, MultipartFile file, String context) {
         validate(file);
         try {
             Path root = storageRoot();
-            Path dir = root.resolve(interventionId.toString()).normalize();
+            Path dir = root.resolve(subdir).normalize();
             ensureUnderRoot(dir);
             Files.createDirectories(dir);
             String storedName = UUID.randomUUID() + "_" + sanitizeFilename(file.getOriginalFilename());
@@ -49,11 +53,12 @@ public class FileStorageService {
             ensureUnderRoot(target);
             String detectedType = detectContentType(file);
             Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
-            return new StoredFile(storedName, target.toString(), detectedType, file.getSize());
+            String relativePath = root.relativize(target).toString().replace('\\', '/');
+            return new StoredFile(storedName, relativePath, detectedType, file.getSize());
         } catch (BadRequestException e) {
             throw e;
         } catch (IOException e) {
-            log.error("File storage failed for intervention {}: {}", interventionId, e.toString());
+            log.error("File storage failed for {} {}: {}", context, subdir, e.toString());
             throw new BadRequestException("Erreur lors du stockage du fichier");
         }
     }
@@ -156,14 +161,38 @@ public class FileStorageService {
         return root;
     }
 
-    private Path resolveSafePath(String storagePath) {
+    public Path resolveStoragePath(String storagePath) {
         try {
             Path root = storageRoot();
-            Path path = Paths.get(storagePath).toAbsolutePath().normalize();
+            Path path = Paths.get(storagePath);
+            if (!path.isAbsolute()) {
+                path = root.resolve(path).normalize();
+            } else {
+                path = path.normalize();
+            }
             ensureUnderRoot(path);
             return path;
         } catch (IOException e) {
             throw new BadRequestException("Chemin de fichier invalide");
+        }
+    }
+
+    private Path resolveSafePath(String storagePath) {
+        return resolveStoragePath(storagePath);
+    }
+
+    public void copySeedResource(String classpathResource, String relativeStoragePath) throws IOException {
+        Path target = resolveStoragePath(relativeStoragePath);
+        Files.createDirectories(target.getParent());
+        if (Files.exists(target) && Files.size(target) > 0) {
+            return;
+        }
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream(classpathResource)) {
+            if (in == null) {
+                log.warn("Seed resource missing: {}", classpathResource);
+                return;
+            }
+            Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
         }
     }
 

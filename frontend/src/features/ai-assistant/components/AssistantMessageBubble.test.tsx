@@ -30,6 +30,61 @@ describe('AssistantMessageBubble', () => {
     expect(screen.getByText('Assistance uniquement')).toBeInTheDocument();
   });
 
+  it('shows schema button when relevantSchemas are present', () => {
+    const message: AssistantMessage = {
+      id: 'a3',
+      role: 'assistant',
+      createdAt: new Date().toISOString(),
+      response: {
+        disclaimer: 'Assistance uniquement',
+        similarInterventions: [],
+        relevantSchemas: [
+          {
+            schemaId: 's1',
+            equipmentId: 'e1',
+            equipmentCode: 'VAR-VEI-SI23',
+            label: 'Cablage X1',
+            schemaType: 'wiring',
+            downloadUrl: '/api/v1/equipment/e1/schemas/s1/download',
+          },
+        ],
+        suggestions: {
+          summary: 'Pompe PV',
+          probableCauses: ['Veille variateur'],
+          correctiveActions: ['Verifier X1'],
+          advice: 'Consulter manuel',
+        },
+      },
+    };
+
+    render(<AssistantMessageBubble message={message} />);
+
+    expect(screen.getByRole('button', { name: /Schémas/i })).toBeInTheDocument();
+    expect(screen.getByText('Schémas')).toBeInTheDocument();
+  });
+
+  it('hides schema button when relevantSchemas is empty', () => {
+    const message: AssistantMessage = {
+      id: 'a4',
+      role: 'assistant',
+      createdAt: new Date().toISOString(),
+      response: {
+        disclaimer: 'Assistance uniquement',
+        similarInterventions: [],
+        suggestions: {
+          summary: 'Pompe PV',
+          probableCauses: ['Veille variateur'],
+          correctiveActions: ['Verifier X1'],
+          advice: 'Consulter manuel',
+        },
+      },
+    };
+
+    render(<AssistantMessageBubble message={message} />);
+
+    expect(screen.queryByRole('button', { name: /Schémas/i })).not.toBeInTheDocument();
+  });
+
   it('renders hard error without response', () => {
     const message: AssistantMessage = {
       id: 'a2',

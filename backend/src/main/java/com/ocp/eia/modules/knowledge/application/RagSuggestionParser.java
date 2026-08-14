@@ -61,6 +61,10 @@ public class RagSuggestionParser {
             List<SimilarIntervention> similar,
             List<SimilarKnowledgeDocument> knowledgeDocuments
     ) {
+        if (similar == null || similar.isEmpty()) {
+            return insufficientEvidenceFallback();
+        }
+
         List<String> causes = new ArrayList<>();
         List<String> actions = new ArrayList<>();
 
@@ -105,53 +109,43 @@ public class RagSuggestionParser {
                     }
                 });
 
-        if (!knowledgeDocuments.isEmpty()) {
-            boolean hasManual = knowledgeDocuments.stream().anyMatch(d -> "manual".equals(d.documentType()));
-            boolean hasProcedure = knowledgeDocuments.stream().anyMatch(d -> "procedure".equals(d.documentType()));
-
-            if (hasManual && causes.isEmpty()) {
-                causes.add("Consulter manuel constructeur pour diagnostic détaillé");
-            }
-            if (hasProcedure && actions.size() < 3) {
-                actions.add("Suivre procédure maintenance préventive selon documentation technique");
-            }
+        int documentCount = knowledgeDocuments == null ? 0 : knowledgeDocuments.size();
+        if (causes.isEmpty() || actions.isEmpty()) {
+            return insufficientEvidenceFallback();
         }
 
-        if (actions.isEmpty()) {
-            actions.addAll(List.of(
-                    "Effectuer inspection visuelle complète de l'équipement",
-                    "Vérifier alimentations électriques et connexions",
-                    "Contrôler paramètres de fonctionnement nominal"
-            ));
-        } else if (actions.size() == 1) {
-            actions.add("Documenter l'intervention pour enrichir la base de connaissances");
-        }
-
-        if (causes.isEmpty()) {
-            causes.addAll(List.of(
-                    "Défaillance composant ou usure normale",
-                    "Paramètres de fonctionnement hors tolérances"
-            ));
-        }
-
-        String summary = similar.isEmpty() && knowledgeDocuments.isEmpty()
-                ? "Diagnostic basé sur procédures générales de maintenance industrielle"
-                : String.format("Diagnostic basé sur %d intervention(s) similaire(s) et %d document(s) technique(s)",
-                similar.size(), knowledgeDocuments.size());
-
-        String advice = similar.isEmpty() && knowledgeDocuments.isEmpty()
-                ? "Consulter un expert technique ou le responsable EIA pour cas complexes non documentés"
-                : "Valider diagnostic avec interventions similaires avant action corrective";
+        String summary = String.format(
+                "Diagnostic basé sur %d intervention(s) similaire(s) et %d document(s) technique(s)",
+                similar.size(),
+                documentCount
+        );
+        String advice = "Valider diagnostic avec interventions similaires avant action corrective";
 
         return new AiSuggestions(causes, actions, summary, advice);
     }
 
     public AiSuggestions noEvidenceFallback() {
+        return insufficientEvidenceFallback();
+    }
+
+    public AiSuggestions vagueQueryFallback() {
         return new AiSuggestions(
-                List.of("Aucune intervention similaire validée trouvée"),
-                List.of("Consulter la documentation constructeur"),
-                "Pas assez de données historiques validées pour cette description.",
-                "Documentez cette intervention pour enrichir la base de connaissances."
+                List.of("Description trop vague pour établir un diagnostic"),
+                List.of("Précisez l'équipement, le symptôme ou un code défaut (ex. E21)"),
+                "Impossible d'analyser cette description.",
+                "Reformulez avec plus de détails avant de relancer l'assistant."
+        );
+    }
+
+    public AiSuggestions insufficientEvidenceFallback() {
+        return new AiSuggestions(
+                List.of("Aucune intervention validée ni document technique suffisamment proche"),
+                List.of(
+                        "Précisez l'équipement, la zone ou un code défaut connu dans le parc",
+                        "Consultez une fiche panne existante ou le manuel constructeur en direct"
+                ),
+                "Cette description ne correspond à aucune donnée fiable du projet.",
+                "Reformulez avec un symptôme concret (ex. « Pompe PV ne démarre plus ») ou un code défaut (ex. E21)."
         );
     }
 

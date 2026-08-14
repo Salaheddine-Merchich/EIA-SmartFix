@@ -1,6 +1,7 @@
 export interface AiDiagnosticTrace {
   query: string;
   retrievedDocuments: RetrievedDocument[];
+  retrievedSchemas: RetrievedSchema[];
   retrievalSteps: RetrievalStep[];
   vectorResultCount: number;
   textResultCount: number;
@@ -27,6 +28,34 @@ export interface RetrievalStep {
   detail: string;
 }
 
+export interface RetrievedSchema {
+  schemaId: string;
+  equipmentId: string;
+  equipmentCode: string;
+  equipmentDesignation?: string;
+  label: string;
+  schemaType: string;
+  sourcePdf?: string;
+  sourcePage?: number;
+  caption?: string;
+  totalSchemasForEquipment?: number;
+  downloadUrl: string;
+}
+
+export interface EquipmentSchemaRef {
+  schemaId: string;
+  equipmentId: string;
+  equipmentCode: string;
+  equipmentDesignation?: string;
+  label: string;
+  schemaType: string;
+  sourcePdf?: string;
+  sourcePage?: number;
+  caption?: string;
+  totalSchemasForEquipment?: number;
+  downloadUrl: string;
+}
+
 export interface AiAssistResponse {
   similarInterventions: {
     interventionId: string;
@@ -43,6 +72,7 @@ export interface AiAssistResponse {
     advice: string;
   };
   disclaimer: string;
+  relevantSchemas?: EquipmentSchemaRef[];
   diagnosticTrace?: AiDiagnosticTrace | null;
 }
 

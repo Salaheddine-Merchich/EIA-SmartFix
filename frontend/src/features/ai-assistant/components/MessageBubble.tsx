@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import type { UserMessage, AssistantMessage } from '../types';
 import { getAssistErrorTitle } from '../utils/assistErrorLabels';
+import { SchemaIconButton } from './SchemaIconButton';
 
 interface UserMessageBubbleProps {
   message: UserMessage;
@@ -58,6 +59,7 @@ function AssistantMessageBubbleComponent({
 
   const suggestions = message.response?.suggestions;
   const disclaimer = message.response?.disclaimer;
+  const relevantSchemas = message.response?.relevantSchemas ?? [];
   const isEmpty = message.error?.kind === 'empty';
   const isUnavailable = message.error?.kind === 'ollama';
 
@@ -132,15 +134,20 @@ function AssistantMessageBubbleComponent({
           {disclaimer && (
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
               <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">{disclaimer}</p>
-              {message.response?.diagnosticTrace && onViewAnalysis && (
-                <button
-                  type="button"
-                  onClick={onViewAnalysis}
-                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-emerald-300 hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-emerald-700 dark:hover:text-emerald-400"
-                >
-                  Voir l&apos;analyse
-                </button>
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                {relevantSchemas.length > 0 && !isEmpty && !isUnavailable && (
+                  <SchemaIconButton schemas={relevantSchemas} />
+                )}
+                {message.response?.diagnosticTrace && onViewAnalysis && (
+                  <button
+                    type="button"
+                    onClick={onViewAnalysis}
+                    className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:border-emerald-300 hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-emerald-700 dark:hover:text-emerald-400"
+                  >
+                    Voir l&apos;analyse
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>

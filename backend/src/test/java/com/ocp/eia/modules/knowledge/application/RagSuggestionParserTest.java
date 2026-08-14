@@ -98,4 +98,13 @@ class RagSuggestionParserTest {
                         .noneMatch(c -> c.toLowerCase().contains("consulter manuel constructeur")),
                 "Ne doit pas ajouter une cause générique si une cause historique existe");
     }
+
+    @Test
+    void fallbackFromHistory_withoutInterventions_returnsInsufficientEvidence() {
+        var suggestions = parser.fallbackFromHistory(List.of(), List.of());
+
+        assertEquals("Cette description ne correspond à aucune donnée fiable du projet.", suggestions.summary());
+        assertTrue(suggestions.correctiveActions().stream()
+                .noneMatch(a -> a.toLowerCase().contains("inspection visuelle")));
+    }
 }

@@ -4,9 +4,12 @@ import { connectSse } from './sseFetch';
 import type {
   AuthResponse,
   AiAssistResponse,
+  AiConversationDetail,
+  AiConversationSummary,
   DashboardStats,
   Equipment,
   EquipmentHistory,
+  EquipmentSchema,
   Failure,
   Intervention,
   PageResponse,
@@ -37,6 +40,15 @@ export const equipmentApi = {
   create: (data: Partial<Equipment>) => api.post<Equipment>('/api/v1/equipment', data).then((r) => r.data),
   update: (id: string, data: Partial<Equipment>) => api.put<Equipment>(`/api/v1/equipment/${id}`, data).then((r) => r.data),
   delete: (id: string) => api.delete(`/api/v1/equipment/${id}`),
+  listSchemas: (id: string) =>
+    api.get<EquipmentSchema[]>(`/api/v1/equipment/${id}/schemas`).then((r) => r.data),
+  downloadSchemaBlob: async (equipmentId: string, schemaId: string) => {
+    const response = await api.get(
+      `/api/v1/equipment/${equipmentId}/schemas/${schemaId}/download`,
+      { responseType: 'blob' },
+    );
+    return response.data as Blob;
+  },
 };
 
 export const failuresApi = {
@@ -180,6 +192,21 @@ export function buildAssistStreamUrl(description: string, options: AiAssistOptio
 }
 
 export const aiApi = {
+  listConversations: () =>
+    api.get<AiConversationSummary[]>('/api/v1/ai/conversations').then((r) => r.data),
+  createConversation: (title?: string) =>
+    api.post<AiConversationDetail>('/api/v1/ai/conversations', { title }).then((r) => r.data),
+  getConversation: (id: string) =>
+    api.get<AiConversationDetail>(`/api/v1/ai/conversations/${id}`).then((r) => r.data),
+  appendConversationMessages: (id: string, userContent: string, assistantResponse: AiAssistResponse) =>
+    api
+      .post<AiConversationDetail>(`/api/v1/ai/conversations/${id}/messages`, {
+        userContent,
+        assistantResponse,
+      })
+      .then((r) => r.data),
+  deleteConversation: (id: string) => api.delete(`/api/v1/ai/conversations/${id}`),
+  deleteAllConversations: () => api.delete('/api/v1/ai/conversations'),
   assist: (description: string, options: AiAssistOptions = {}) => {
     const { failureId, equipmentId, topK = 5, signal } = options;
     return api

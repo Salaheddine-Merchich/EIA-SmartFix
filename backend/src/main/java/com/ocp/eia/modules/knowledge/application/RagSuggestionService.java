@@ -2,6 +2,7 @@ package com.ocp.eia.modules.knowledge.application;
 
 import com.ocp.eia.application.dto.AiDto.AiSuggestions;
 import com.ocp.eia.config.AppProperties;
+import com.ocp.eia.modules.knowledge.domain.model.QuerySignals;
 import com.ocp.eia.modules.knowledge.domain.model.SimilarIntervention;
 import com.ocp.eia.modules.knowledge.domain.model.SimilarKnowledgeDocument;
 import com.ocp.eia.modules.knowledge.domain.port.LlmProviderPort;
@@ -32,8 +33,18 @@ public class RagSuggestionService {
             List<SimilarIntervention> similar,
             List<SimilarKnowledgeDocument> knowledgeDocuments
     ) {
-        if (similar.isEmpty() && knowledgeDocuments.isEmpty()) {
-            return new SuggestionResult(ragSuggestionParser.noEvidenceFallback(), 0L, false);
+        QuerySignals signals = QuerySignalExtractor.extract(description);
+        double similarityThreshold = appProperties.getAi().getRag().getSimilarityThreshold();
+
+        if (!AssistQueryValidator.isValid(description)) {
+            log.info("RAG suggestion skipped: invalid query");
+            return new SuggestionResult(ragSuggestionParser.vagueQueryFallback(), 0L, false);
+        }
+
+        if (!RagEvidencePolicy.hasProjectEvidence(similar, knowledgeDocuments, signals, similarityThreshold)) {
+            log.info("RAG suggestion skipped: insufficient project evidence");
+            ragObservabilityService.recordFallbackResponse();
+            return new SuggestionResult(ragSuggestionParser.insufficientEvidenceFallback(), 0L, false);
         }
 
         if (shouldUseFastPath(similar)) {
@@ -79,6 +90,13 @@ public class RagSuggestionService {
             return new SuggestionResult(ragSuggestionParser.parse(response), durationMs, false);
         } catch (Exception e) {
             log.error("Erreur génération LLM after {}ms: {}", elapsedMs(llmStart), e.getMessage());
+            if (similar.isEmpty()) {
+                return new SuggestionResult(
+                        ragSuggestionParser.insufficientEvidenceFallback(),
+                        elapsedMs(llmStart),
+                        false
+                );
+            }
             return new SuggestionResult(
                     ragSuggestionParser.fallbackFromHistory(similar, knowledgeDocuments),
                     elapsedMs(llmStart),
@@ -93,6 +111,20 @@ public class RagSuggestionService {
         }
         double minSimilarity = appProperties.getAi().getRag().getFastPathMinSimilarity();
         return topSimilarity(similar) >= minSimilarity;
+    }
+
+    public boolean hasProjectEvidence(
+            String description,
+            List<SimilarIntervention> similar,
+            List<SimilarKnowledgeDocument> knowledgeDocuments
+    ) {
+        QuerySignals signals = QuerySignalExtractor.extract(description);
+        return RagEvidencePolicy.hasProjectEvidence(
+                similar,
+                knowledgeDocuments,
+                signals,
+                appProperties.getAi().getRag().getSimilarityThreshold()
+        );
     }
 
     private static double topSimilarity(List<SimilarIntervention> similar) {

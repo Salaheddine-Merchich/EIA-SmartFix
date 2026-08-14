@@ -24,14 +24,21 @@ import {
   removeStreamingPlaceholder,
 } from '../utils/conversationMessageHelpers';
 import { isAssistCancelled, mapAssistError } from '../utils/mapAssistError';
+import { isValidAssistQuery } from '../utils/isValidAssistQuery';
 
 interface UseAssistSendOptions {
   setConversation: Dispatch<SetStateAction<Conversation>>;
   setStatus: Dispatch<SetStateAction<AssistantStatus>>;
   assistContext: AssistContext;
+  onTurnComplete?: (userContent: string, assistant: AssistantMessage) => Promise<void>;
 }
 
-export function useAssistSend({ setConversation, setStatus, assistContext }: UseAssistSendOptions) {
+export function useAssistSend({
+  setConversation,
+  setStatus,
+  assistContext,
+  onTurnComplete,
+}: UseAssistSendOptions) {
   const [loading, setLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
@@ -62,7 +69,7 @@ export function useAssistSend({ setConversation, setStatus, assistContext }: Use
   const sendMessage = useCallback(
     async (rawContent: string) => {
       const content = rawContent.trim();
-      if (!content || loading) return;
+      if (!content || loading || !isValidAssistQuery(content)) return;
 
       abortActive(false);
       const controller = new AbortController();
@@ -98,6 +105,9 @@ export function useAssistSend({ setConversation, setStatus, assistContext }: Use
         const assistantMessage = buildAssistantMessage(response);
         setConversation((prev) => appendMessages(prev, [assistantMessage]));
         setStatus(assistantMessage.error?.kind === 'ollama' ? 'degraded' : 'online');
+        if (assistantMessage.response) {
+          await onTurnComplete?.(content, assistantMessage);
+        }
       } catch (error) {
         if (requestId !== requestIdRef.current) return;
         if (isAssistCancelled(error) || axios.isCancel(error)) {
@@ -126,7 +136,7 @@ export function useAssistSend({ setConversation, setStatus, assistContext }: Use
         }
       }
     },
-    [abortActive, assistContext.equipmentId, assistContext.failureId, loading, setConversation, setStatus],
+    [abortActive, assistContext.equipmentId, assistContext.failureId, loading, onTurnComplete, setConversation, setStatus],
   );
 
   return {

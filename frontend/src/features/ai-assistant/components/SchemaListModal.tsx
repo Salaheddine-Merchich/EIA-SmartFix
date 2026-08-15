@@ -78,7 +78,7 @@ export function SchemaListModal({
                 <button
                   type="button"
                   onClick={() => setActiveSchema(schema)}
-                  className="flex w-full items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3 text-left hover:border-sky-300 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-sky-700"
+                  className="flex w-full items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3 text-left hover:border-emerald-500/40 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-emerald-500/40"
                 >
                   <span
                     className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${schemaTypeTone(schema.schemaType)}`}
@@ -105,7 +105,7 @@ export function SchemaListModal({
                       )}
                     </span>
                   </span>
-                  <ChevronRightIcon className="h-4 w-4 shrink-0 text-slate-400" />
+                  <ChevronRightIcon className="mt-1 h-4 w-4 shrink-0 text-slate-400" />
                 </button>
               </li>
             );

@@ -72,9 +72,9 @@ export function SchemaEquipmentPickerModal({
               <button
                 type="button"
                 onClick={() => onSelectEquipment(group.equipmentId, group.equipmentCode)}
-                className="flex w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-left hover:border-sky-300 hover:bg-sky-50/50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-sky-700"
+                className="flex w-full items-start gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-left hover:border-emerald-500/40 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-emerald-500/40"
               >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
                   <SchemaSheetIcon className="h-5 w-5" />
                 </span>
                 <span className="min-w-0 flex-1">
@@ -87,10 +87,10 @@ export function SchemaEquipmentPickerModal({
                     </span>
                   )}
                 </span>
-                <span className="shrink-0 text-xs text-slate-500">
+                <span className="mt-1 shrink-0 text-xs text-slate-500">
                   {count} schéma{count > 1 ? 's' : ''}
                 </span>
-                <ChevronRightIcon className="h-4 w-4 shrink-0 text-slate-400" />
+                <ChevronRightIcon className="mt-1 h-4 w-4 shrink-0 text-slate-400" />
               </button>
             </li>
           );

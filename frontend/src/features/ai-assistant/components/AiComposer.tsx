@@ -63,11 +63,11 @@ function AiComposerComponent({
   };
 
   return (
-    <div className={`border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950 ${ASSISTANT_LAYOUT.pagePaddingX} py-4`}>
-      <div className={`relative mx-auto w-full ${ASSISTANT_LAYOUT.threadMaxWidth}`}>
-        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          <div className="flex items-end gap-3">
-            <div className="flex-1">
+    <div className={`border-t border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 ${ASSISTANT_LAYOUT.pagePaddingX} py-3`}>
+      <div className={`mx-auto w-full ${ASSISTANT_LAYOUT.threadMaxWidth}`}>
+        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 transition-colors focus-within:border-emerald-500/50 dark:border-slate-700 dark:bg-slate-900 dark:focus-within:border-emerald-500/50">
+          <div className="flex items-end gap-2.5">
+            <div className="min-w-0 flex-1">
               <label htmlFor="ai-composer" className="sr-only">
                 Décrivez votre panne
               </label>
@@ -79,7 +79,7 @@ function AiComposerComponent({
                 onChange={(e) => setValue(e.target.value.slice(0, maxChars))}
                 onKeyDown={onKeyDown}
                 placeholder={loading ? 'Génération…' : 'Décrivez votre panne ou symptômes observés…'}
-                className="w-full resize-none border-0 bg-transparent px-1 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus-visible:ring-offset-slate-900"
+                className="w-full resize-none border-0 bg-transparent px-0.5 py-1.5 text-sm leading-relaxed text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-100 dark:placeholder:text-slate-500"
                 style={{ minHeight: '40px', maxHeight: '120px' }}
               />
             </div>
@@ -90,7 +90,7 @@ function AiComposerComponent({
                 variant="secondary"
                 size="sm"
                 onClick={onStop}
-                className="shrink-0 whitespace-nowrap"
+                className="mb-0.5 h-9 shrink-0 whitespace-nowrap"
               >
                 Arrêter la génération
               </EnterpriseButton>
@@ -101,23 +101,23 @@ function AiComposerComponent({
                 onClick={submit}
                 disabled={!canSend}
                 aria-label="Envoyer le message"
-                className="shrink-0"
+                className="mb-0.5 h-9 shrink-0"
               >
                 Envoyer
               </EnterpriseButton>
             )}
           </div>
-        </div>
 
-        <div className="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-          <span>
-            {showMinLengthHint
-              ? 'Décrivez un symptôme, un équipement ou un code défaut du parc OCP.'
-              : 'Entrée pour envoyer · Maj+Entrée pour nouvelle ligne'}
-          </span>
-          <span className={`${isNearLimit ? 'font-medium text-amber-600' : 'tabular-nums text-slate-400'} ${showMinLengthHint ? 'text-amber-600' : ''}`}>
-            {charCount}/{maxChars}
-          </span>
+          <div className="mt-1.5 flex items-center justify-between gap-3 text-[11px] text-slate-500 dark:text-slate-400">
+            <span>
+              {showMinLengthHint
+                ? 'Décrivez un symptôme, un équipement ou un code défaut du parc OCP.'
+                : 'Entrée pour envoyer · Maj+Entrée pour nouvelle ligne'}
+            </span>
+            <span className={`tabular-nums ${isNearLimit || showMinLengthHint ? 'font-medium text-amber-600' : 'text-slate-400'}`}>
+              {charCount}/{maxChars}
+            </span>
+          </div>
         </div>
       </div>
     </div>

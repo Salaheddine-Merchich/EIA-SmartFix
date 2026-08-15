@@ -10,9 +10,9 @@ interface UserMessageBubbleProps {
 function UserMessageBubbleComponent({ message }: UserMessageBubbleProps) {
   return (
     <div className="flex justify-end">
-      <div className="max-w-[85%] rounded-2xl rounded-br-md bg-slate-800 px-4 py-3 text-sm leading-relaxed text-white sm:max-w-[75%]">
+      <div className="max-w-[85%] rounded-2xl rounded-br-md bg-emerald-700 px-4 py-3 text-sm leading-relaxed text-white sm:max-w-[75%]">
         <p className="whitespace-pre-wrap">{message.content}</p>
-        <p className="mt-2 text-xs text-slate-300">
+        <p className="mt-2 text-xs text-emerald-100/70">
           {new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(
             new Date(message.createdAt),
           )}

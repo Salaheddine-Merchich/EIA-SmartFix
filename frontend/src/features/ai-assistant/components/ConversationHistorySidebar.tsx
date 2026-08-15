@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import type { AiConversationSummary } from '@/shared/types';
 import { ASSISTANT_LAYOUT } from '../constants/layout';
+import { compactHistoryTitle } from '../utils/compactHistoryTitle';
 
 interface ConversationHistorySidebarProps {
   items: AiConversationSummary[];
@@ -74,8 +75,8 @@ function ConversationHistorySidebarComponent({
                     onClick={() => onSelect(item.id)}
                     className="min-w-0 flex-1 text-left"
                   >
-                    <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
-                      {item.title}
+                    <p className="break-words text-sm font-medium leading-snug text-slate-800 dark:text-slate-200">
+                      {compactHistoryTitle(item.title)}
                     </p>
                     <p className="mt-0.5 text-[11px] text-slate-500">{formatUpdatedAt(item.updatedAt)}</p>
                   </button>

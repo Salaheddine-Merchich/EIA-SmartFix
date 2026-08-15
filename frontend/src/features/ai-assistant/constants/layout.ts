@@ -30,4 +30,8 @@ export const EXAMPLE_QUERIES = [
     text: 'Sonde manque d\'eau TA-TC pompe solaire VEICHI',
     category: 'Instrumentation',
   },
+  {
+    text: 'Code E01 surintensité variateur Hitachi SJ200',
+    category: 'Convoyage',
+  },
 ] as const;

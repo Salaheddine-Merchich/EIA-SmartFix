@@ -26,7 +26,7 @@ import java.util.UUID;
 public class ManageAiConversationsUseCase {
 
     private static final String DEFAULT_TITLE = "Nouvelle conversation";
-    private static final int TITLE_MAX = 120;
+    private static final int TITLE_MAX = 36;
 
     private final AiConversationRepository conversationRepository;
     private final SecurityUtils securityUtils;
@@ -137,7 +137,12 @@ public class ManageAiConversationsUseCase {
             return fallback;
         }
         String trimmed = raw.trim().replaceAll("\\s+", " ");
-        return trimmed.length() <= TITLE_MAX ? trimmed : trimmed.substring(0, TITLE_MAX);
+        if (trimmed.length() <= TITLE_MAX) {
+            return trimmed;
+        }
+        String slice = trimmed.substring(0, TITLE_MAX);
+        int lastSpace = slice.lastIndexOf(' ');
+        return lastSpace > 16 ? slice.substring(0, lastSpace) : slice;
     }
 
     private String assistantContent(AiAssistResponse response) {

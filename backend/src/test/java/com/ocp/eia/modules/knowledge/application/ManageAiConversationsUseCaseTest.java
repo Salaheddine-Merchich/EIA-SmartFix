@@ -114,7 +114,7 @@ class ManageAiConversationsUseCaseTest {
                 response
         ));
 
-        assertEquals("Defaut E21 variateur convoyeur Hitachi SJ200", detail.title());
+        assertEquals("Defaut E21 variateur convoyeur", detail.title());
         assertEquals(2, detail.messages().size());
         assertEquals("user", detail.messages().getFirst().role());
         assertEquals("assistant", detail.messages().get(1).role());

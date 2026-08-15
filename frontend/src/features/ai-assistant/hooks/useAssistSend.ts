@@ -25,6 +25,7 @@ import {
 } from '../utils/conversationMessageHelpers';
 import { isAssistCancelled, mapAssistError } from '../utils/mapAssistError';
 import { isValidAssistQuery } from '../utils/isValidAssistQuery';
+import { compactHistoryTitle } from '../utils/compactHistoryTitle';
 
 interface UseAssistSendOptions {
   setConversation: Dispatch<SetStateAction<Conversation>>;
@@ -86,7 +87,7 @@ export function useAssistSend({
 
       setConversation((prev) => ({
         ...prev,
-        title: prev.messages.length === 0 ? content.slice(0, 60) : prev.title,
+        title: prev.messages.length === 0 ? compactHistoryTitle(content) : prev.title,
         messages: [...prev.messages, userMessage],
         updatedAt: now,
       }));

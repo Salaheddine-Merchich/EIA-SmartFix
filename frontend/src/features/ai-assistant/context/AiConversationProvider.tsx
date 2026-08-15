@@ -27,6 +27,7 @@ import type {
 import { createConversation } from '../utils/conversationStorage';
 import { getSimilarInterventions } from '../utils/conversationMessageHelpers';
 import { mapConversationDetail } from '../utils/mapConversationDetail';
+import { compactHistoryTitle } from '../utils/compactHistoryTitle';
 
 interface AiConversationContextValue {
   conversation: Conversation;
@@ -89,7 +90,7 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
       try {
         let id = conversationIdRef.current;
         if (!id) {
-          const created = await aiApi.createConversation(userContent.slice(0, 120));
+          const created = await aiApi.createConversation(compactHistoryTitle(userContent));
           id = created.id;
           conversationIdRef.current = id;
           setConversation((prev) => ({

@@ -7,11 +7,17 @@ import { formatRelativeTime } from '../utils/formatters';
 
 interface AlertsPanelProps {
   alerts: AlertItem[];
+  totalCritical: number;
 }
 
-export function AlertsPanel({ alerts }: AlertsPanelProps) {
+export function AlertsPanel({ alerts, totalCritical }: AlertsPanelProps) {
+  const subtitle =
+    totalCritical > alerts.length
+      ? `${totalCritical} incidents ouverts — aperçu des ${alerts.length} plus récents`
+      : 'Incidents prioritaires actifs';
+
   return (
-    <DashboardPanel title="Alertes" subtitle="Incidents prioritaires actifs">
+    <DashboardPanel title="Alertes" subtitle={subtitle}>
       {alerts.length === 0 ? (
         <EmptyState
           title="Aucune alerte active"

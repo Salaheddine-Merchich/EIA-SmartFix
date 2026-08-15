@@ -23,6 +23,8 @@ public final class DashboardDto {
     public record DashboardResponse(
             long totalFailures,
             long openFailures,
+            long criticalOpenFailures,
+            long equipmentCount,
             long validatedInterventions,
             long pendingValidations,
             long draftInterventions,

@@ -80,4 +80,6 @@ public interface FailureRepository extends JpaRepository<Failure, UUID> {
     List<Object[]> countByEquipmentIds(@Param("ids") Collection<UUID> ids);
 
     long countByStatut(StatutPanne statut);
+
+    long countByCriticiteInAndStatutIn(Collection<Criticite> criticites, Collection<StatutPanne> statuts);
 }

@@ -13,7 +13,6 @@ export interface KpiCardData {
 
 export interface DashboardViewModel {
   stats: DashboardStats;
-  equipmentCount: number;
   recentFailures: Failure[];
   criticalFailures: Failure[];
 }

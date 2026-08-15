@@ -15,10 +15,13 @@ export function useRecurringDefects(limit = 8) {
   const analyzeMutation = useMutation({
     mutationFn: () => analyticsApi.analyzeRecurringDefects(limit),
     onSuccess: (result) => {
-      queryClient.setQueryData([...RECURRING_DEFECTS_KEY, limit], {
-        defects: result.defects,
-        totalRecurringCodes: result.defects.length,
-      });
+      queryClient.setQueryData(
+        [...RECURRING_DEFECTS_KEY, limit],
+        (previous: { defects: RecurringDefectsAnalysis['defects']; totalRecurringCodes: number } | undefined) => ({
+          defects: result.defects,
+          totalRecurringCodes: previous?.totalRecurringCodes ?? result.defects.length,
+        }),
+      );
     },
   });
 

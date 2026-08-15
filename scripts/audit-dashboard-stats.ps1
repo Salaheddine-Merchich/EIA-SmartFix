@@ -32,6 +32,8 @@ Write-Host "`n--- Compteurs globaux ---" -ForegroundColor Yellow
 $allOk = $true
 $allOk = (Compare-Metric "totalFailures" $api.totalFailures (Invoke-PgQuery "SELECT COUNT(*) FROM failures;")) -and $allOk
 $allOk = (Compare-Metric "openFailures" $api.openFailures (Invoke-PgQuery "SELECT COUNT(*) FROM failures WHERE statut IN ('OUVERTE','EN_COURS');")) -and $allOk
+$allOk = (Compare-Metric "criticalOpenFailures" $api.criticalOpenFailures (Invoke-PgQuery "SELECT COUNT(*) FROM failures WHERE criticite IN ('HAUTE','CRITIQUE') AND statut IN ('OUVERTE','EN_COURS');")) -and $allOk
+$allOk = (Compare-Metric "equipmentCount" $api.equipmentCount (Invoke-PgQuery "SELECT COUNT(*) FROM equipment;")) -and $allOk
 $allOk = (Compare-Metric "validatedInterventions" $api.validatedInterventions (Invoke-PgQuery "SELECT COUNT(*) FROM interventions WHERE statut_validation = 'VALIDEE';")) -and $allOk
 $allOk = (Compare-Metric "pendingValidations" $api.pendingValidations (Invoke-PgQuery "SELECT COUNT(*) FROM interventions WHERE statut_validation = 'SOUMISE';")) -and $allOk
 $allOk = (Compare-Metric "draftInterventions" $api.draftInterventions (Invoke-PgQuery "SELECT COUNT(*) FROM interventions WHERE statut_validation = 'BROUILLON';")) -and $allOk
@@ -39,7 +41,7 @@ $allOk = (Compare-Metric "rejectedInterventions" $api.rejectedInterventions (Inv
 $allOk = (Compare-Metric "knowledgeDocuments" $api.knowledgeDocuments (Invoke-PgQuery "SELECT COUNT(*) FROM knowledge_documents;")) -and $allOk
 $allOk = (Compare-Metric "activeKnowledgeDocuments" $api.activeKnowledgeDocuments (Invoke-PgQuery "SELECT COUNT(*) FROM knowledge_documents WHERE active = true;")) -and $allOk
 $allOk = (Compare-Metric "activeEquipmentSchemas" $api.activeEquipmentSchemas (Invoke-PgQuery "SELECT COUNT(*) FROM equipment_schemas WHERE active = true;")) -and $allOk
-$allOk = (Compare-Metric "indexedInterventions" $api.indexedInterventions (Invoke-PgQuery "SELECT COUNT(*) FROM intervention_embeddings;")) -and $allOk
+$allOk = (Compare-Metric "indexedInterventions" $api.indexedInterventions (Invoke-PgQuery "SELECT COUNT(*) FROM intervention_embeddings e JOIN interventions i ON i.id = e.intervention_id WHERE i.statut_validation = 'VALIDEE';")) -and $allOk
 
 Write-Host "`n--- Tendance mensuelle (API) ---" -ForegroundColor Yellow
 $apiMonthSum = 0

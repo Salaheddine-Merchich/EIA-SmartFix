@@ -1,16 +1,20 @@
 package com.ocp.eia.modules.analytics.application;
 
 import com.ocp.eia.application.dto.DashboardDto.*;
+import com.ocp.eia.domain.model.Criticite;
 import com.ocp.eia.domain.model.StatutPanne;
 import com.ocp.eia.domain.model.StatutValidation;
+import com.ocp.eia.domain.model.User;
+import com.ocp.eia.domain.repository.EquipmentRepository;
 import com.ocp.eia.domain.repository.EquipmentSchemaRepository;
 import com.ocp.eia.domain.repository.FailureRepository;
 import com.ocp.eia.domain.repository.InterventionRepository;
-import com.ocp.eia.modules.knowledge.application.AiDiagnosticStatsService;
+import com.ocp.eia.infrastructure.security.SecurityUtils;
 import com.ocp.eia.modules.knowledge.domain.repository.KnowledgeDocumentRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +25,23 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class DashboardUseCase {
+
+    static final String AI_RELIABILITY_SQL = """
+            SELECT COUNT(*) AS diagnostics_count,
+                   AVG((payload #>> '{diagnosticTrace,confidenceScore}')::double precision) AS avg_confidence,
+                   COALESCE(SUM((payload #>> '{diagnosticTrace,filteredCount}')::int), 0) AS total_retrievals
+            FROM ai_conversation_messages m
+            JOIN ai_conversations c ON c.id = m.conversation_id
+            WHERE c.user_id = ?
+              AND m.role = 'assistant'
+              AND jsonb_exists(m.payload, 'diagnosticTrace')
+            """;
+
+    static final String INDEXED_INTERVENTIONS_SQL = """
+            SELECT COUNT(*) FROM intervention_embeddings e
+            JOIN interventions i ON i.id = e.intervention_id
+            WHERE i.statut_validation = 'VALIDEE'
+            """;
 
     static final String FAILURES_BY_MONTH_SQL = """
             WITH bounds AS (
@@ -42,16 +63,22 @@ public class DashboardUseCase {
             """;
 
     private final FailureRepository failureRepository;
+    private final EquipmentRepository equipmentRepository;
     private final InterventionRepository interventionRepository;
     private final KnowledgeDocumentRepository knowledgeDocumentRepository;
     private final EquipmentSchemaRepository equipmentSchemaRepository;
     private final JdbcTemplate jdbcTemplate;
-    private final ObjectProvider<AiDiagnosticStatsService> aiDiagnosticStatsService;
+    private final SecurityUtils securityUtils;
 
     public DashboardResponse execute() {
         long totalFailures = failureRepository.count();
         long openFailures = failureRepository.countByStatut(StatutPanne.OUVERTE)
                 + failureRepository.countByStatut(StatutPanne.EN_COURS);
+        long criticalOpenFailures = failureRepository.countByCriticiteInAndStatutIn(
+                List.of(Criticite.HAUTE, Criticite.CRITIQUE),
+                List.of(StatutPanne.OUVERTE, StatutPanne.EN_COURS)
+        );
+        long equipmentCount = equipmentRepository.count();
         long validatedInterventions = interventionRepository.countByStatutValidation(StatutValidation.VALIDEE);
         long pendingValidations = interventionRepository.countByStatutValidation(StatutValidation.SOUMISE);
         long draftInterventions = interventionRepository.countByStatutValidation(StatutValidation.BROUILLON);
@@ -82,15 +109,13 @@ public class DashboardUseCase {
                 .toList();
 
         List<MonthlyTrendItem> byMonth = fetchFailuresByMonth();
-
-        AiDiagnosticStatsService statsService = aiDiagnosticStatsService.getIfAvailable();
-        AiReliabilityStats aiReliability = statsService != null
-                ? statsService.snapshot().orElse(null)
-                : null;
+        AiReliabilityStats aiReliability = fetchAiReliability();
 
         return new DashboardResponse(
                 totalFailures,
                 openFailures,
+                criticalOpenFailures,
+                equipmentCount,
                 validatedInterventions,
                 pendingValidations,
                 draftInterventions,
@@ -119,9 +144,36 @@ public class DashboardUseCase {
         ));
     }
 
+    private AiReliabilityStats fetchAiReliability() {
+        User user;
+        try {
+            user = securityUtils.getCurrentUser();
+        } catch (UsernameNotFoundException ignored) {
+            return null;
+        }
+        if (user == null || user.getId() == null) {
+            return null;
+        }
+        try {
+            return jdbcTemplate.query(AI_RELIABILITY_SQL, rs -> {
+                if (!rs.next()) {
+                    return null;
+                }
+                long count = rs.getLong("diagnostics_count");
+                if (count == 0) {
+                    return null;
+                }
+                double avgConfidence = Math.round(rs.getDouble("avg_confidence") * 10.0) / 10.0;
+                long totalRetrievals = rs.getLong("total_retrievals");
+                return new AiReliabilityStats(count, avgConfidence, totalRetrievals);
+            }, user.getId());
+        } catch (DataAccessException ignored) {
+            return null;
+        }
+    }
+
     private long countIndexedInterventions() {
-        Long count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM intervention_embeddings", Long.class);
+        Long count = jdbcTemplate.queryForObject(INDEXED_INTERVENTIONS_SQL, Long.class);
         return count != null ? count : 0L;
     }
 

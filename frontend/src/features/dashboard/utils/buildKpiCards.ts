@@ -2,11 +2,7 @@ import type { DashboardStats } from '@/shared/types';
 import type { KpiCardData } from '../types';
 import { formatNumber } from './formatters';
 
-export function buildKpiCards(
-  stats: DashboardStats,
-  equipmentCount: number,
-  criticalCount: number,
-): KpiCardData[] {
+export function buildKpiCards(stats: DashboardStats): KpiCardData[] {
   const cards: KpiCardData[] = [
     {
       id: 'interventions',
@@ -19,15 +15,15 @@ export function buildKpiCards(
     {
       id: 'equipment',
       title: 'Équipements',
-      value: formatNumber(equipmentCount),
+      value: formatNumber(stats.equipmentCount),
       subtitle: 'Référencés',
-      hint: 'Top 5 équipements les plus impactés',
+      hint: `${formatNumber(stats.equipmentCount)} équipements en base`,
       icon: 'equipment',
     },
     {
       id: 'incidents',
       title: 'Incidents critiques',
-      value: formatNumber(criticalCount),
+      value: formatNumber(stats.criticalOpenFailures),
       subtitle: 'Criticité haute ou critique',
       hint: `${formatNumber(stats.openFailures)} pannes ouvertes au total`,
       icon: 'incidents',
@@ -48,7 +44,7 @@ export function buildKpiCards(
       title: 'AI Reliability',
       value: `${stats.aiReliability.averageConfidence.toFixed(1)}%`,
       subtitle: `${formatNumber(stats.aiReliability.diagnosticsCount)} diagnostics`,
-      hint: `${formatNumber(stats.aiReliability.totalRetrievals)} recherches effectuées`,
+      hint: `${formatNumber(stats.aiReliability.totalRetrievals)} fiches RAG retenues`,
       icon: 'ai',
     });
   } else {

@@ -164,7 +164,7 @@ export function AnalyticsSection({ stats }: AnalyticsSectionProps) {
 
     <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
 
-      <DashboardPanel title="Équipements par famille" subtitle="Répartition des pannes">
+      <DashboardPanel title="Pannes par famille" subtitle="Répartition des pannes">
 
         {familleData.length === 0 ? (
 

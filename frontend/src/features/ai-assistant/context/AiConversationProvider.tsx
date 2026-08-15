@@ -11,6 +11,7 @@ import {
 
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { aiApi } from '@/shared/api';
+import { queryClient } from '@/shared/queryClient';
 import type { AiConversationSummary } from '@/shared/types';
 
 import { useAssistSend } from '../hooks/useAssistSend';
@@ -62,6 +63,10 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
   const [historyLoading, setHistoryLoading] = useState(false);
   const conversationIdRef = useRef<string | null>(null);
 
+  const invalidateDashboard = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+  }, []);
+
   const refreshHistory = useCallback(async () => {
     const items = await aiApi.listConversations();
     setHistory(items);
@@ -95,11 +100,12 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
         }
         await aiApi.appendConversationMessages(id, userContent, assistant.response);
         await refreshHistory();
+        invalidateDashboard();
       } catch {
         // Keep the local thread if persistence fails.
       }
     },
-    [refreshHistory],
+    [refreshHistory, invalidateDashboard],
   );
 
   const { loading, setLoading, abortActive, sendMessage, cancelGeneration } = useAssistSend({
@@ -158,15 +164,17 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
         clearConversation();
       }
       await refreshHistory();
+      invalidateDashboard();
     },
-    [clearConversation, refreshHistory],
+    [clearConversation, refreshHistory, invalidateDashboard],
   );
 
   const clearAllHistory = useCallback(async () => {
     await aiApi.deleteAllConversations();
     clearConversation();
     setHistory([]);
-  }, [clearConversation]);
+    invalidateDashboard();
+  }, [clearConversation, invalidateDashboard]);
 
   const clearComposerPrefill = useCallback(() => {
     setComposerPrefill('');

@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from '@/shared/queryClient';
 import {
   createBrowserRouter,
   Navigate,
@@ -25,16 +26,6 @@ const EnterpriseDashboardPage = lazy(
   () => import('@/features/dashboard/pages/EnterpriseDashboardPage'),
 );
 const AiAssistantPage = lazy(() => import('@/features/ai-assistant/pages/AiAssistantPage'));
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30_000,
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
 
 function withSuspense(element: React.ReactNode) {
   return <Suspense fallback={<EnterprisePageLoader />}>{element}</Suspense>;

@@ -92,6 +92,8 @@ export interface Document {
 export interface DashboardStats {
   totalFailures: number;
   openFailures: number;
+  criticalOpenFailures: number;
+  equipmentCount: number;
   validatedInterventions: number;
   pendingValidations: number;
   draftInterventions: number;

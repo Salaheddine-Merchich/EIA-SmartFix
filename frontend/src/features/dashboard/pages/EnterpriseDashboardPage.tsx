@@ -45,11 +45,7 @@ export default function EnterpriseDashboardPage() {
     );
   }
 
-  const kpiCards = buildKpiCards(
-    viewModel.stats,
-    viewModel.equipmentCount,
-    viewModel.criticalFailures.length,
-  );
+  const kpiCards = buildKpiCards(viewModel.stats);
 
   return (
     <motion.div
@@ -70,7 +66,10 @@ export default function EnterpriseDashboardPage() {
             <LiveActivityFeed />
             <RecentActivityTimeline items={mapFailuresToActivity(viewModel.recentFailures)} />
           </div>
-          <AlertsPanel alerts={mapFailuresToAlerts(viewModel.criticalFailures)} />
+          <AlertsPanel
+            alerts={mapFailuresToAlerts(viewModel.criticalFailures)}
+            totalCritical={viewModel.stats.criticalOpenFailures}
+          />
         </div>
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">

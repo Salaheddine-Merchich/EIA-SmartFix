@@ -1,31 +1,31 @@
 import { useQuery } from '@tanstack/react-query';
-import { dashboardApi, equipmentApi, failuresApi } from '@/shared/api';
+import { dashboardApi, failuresApi } from '@/shared/api';
+import type { Failure } from '@/shared/types';
 import type { DashboardViewModel } from '../types';
 
-async function fetchCriticalFailures() {
-  const [critique, haute] = await Promise.all([
-    failuresApi.list({ criticite: 'CRITIQUE', page: 0, size: 5 }),
-    failuresApi.list({ criticite: 'HAUTE', page: 0, size: 5 }),
+async function fetchCriticalFailurePreview(): Promise<Failure[]> {
+  const [critiqueOuverte, critiqueEnCours, hauteOuverte, hauteEnCours] = await Promise.all([
+    failuresApi.list({ criticite: 'CRITIQUE', statut: 'OUVERTE', page: 0, size: 6 }),
+    failuresApi.list({ criticite: 'CRITIQUE', statut: 'EN_COURS', page: 0, size: 6 }),
+    failuresApi.list({ criticite: 'HAUTE', statut: 'OUVERTE', page: 0, size: 6 }),
+    failuresApi.list({ criticite: 'HAUTE', statut: 'EN_COURS', page: 0, size: 6 }),
   ]);
 
-  const open = [...critique.content, ...haute.content].filter(
-    (failure) => failure.statut === 'OUVERTE' || failure.statut === 'EN_COURS',
+  const unique = new Map(
+    [...critiqueOuverte.content, ...critiqueEnCours.content, ...hauteOuverte.content, ...hauteEnCours.content].map(
+      (failure) => [failure.id, failure],
+    ),
   );
 
-  const unique = new Map(open.map((failure) => [failure.id, failure]));
-  return [...unique.values()].slice(0, 6);
+  return [...unique.values()]
+    .sort((a, b) => new Date(b.dateHeure).getTime() - new Date(a.dateHeure).getTime())
+    .slice(0, 6);
 }
 
 export function useDashboardData() {
   const statsQuery = useQuery({
     queryKey: ['dashboard', 'stats'],
     queryFn: dashboardApi.stats,
-  });
-
-  const equipmentQuery = useQuery({
-    queryKey: ['dashboard', 'equipment-count'],
-    queryFn: () => equipmentApi.list({ page: 0, size: 1 }),
-    select: (response) => response.totalElements,
   });
 
   const recentFailuresQuery = useQuery({
@@ -36,29 +36,18 @@ export function useDashboardData() {
 
   const criticalFailuresQuery = useQuery({
     queryKey: ['dashboard', 'critical-failures'],
-    queryFn: fetchCriticalFailures,
+    queryFn: fetchCriticalFailurePreview,
   });
 
   const isLoading =
-    statsQuery.isLoading ||
-    equipmentQuery.isLoading ||
-    recentFailuresQuery.isLoading ||
-    criticalFailuresQuery.isLoading;
+    statsQuery.isLoading || recentFailuresQuery.isLoading || criticalFailuresQuery.isLoading;
 
-  const isError =
-    statsQuery.isError ||
-    equipmentQuery.isError ||
-    recentFailuresQuery.isError ||
-    criticalFailuresQuery.isError;
+  const isError = statsQuery.isError || recentFailuresQuery.isError || criticalFailuresQuery.isError;
 
   const viewModel: DashboardViewModel | null =
-    statsQuery.data &&
-    equipmentQuery.data != null &&
-    recentFailuresQuery.data &&
-    criticalFailuresQuery.data
+    statsQuery.data && recentFailuresQuery.data && criticalFailuresQuery.data
       ? {
           stats: statsQuery.data,
-          equipmentCount: equipmentQuery.data,
           recentFailures: recentFailuresQuery.data,
           criticalFailures: criticalFailuresQuery.data,
         }
@@ -70,7 +59,6 @@ export function useDashboardData() {
     isError,
     refetch: () => {
       statsQuery.refetch();
-      equipmentQuery.refetch();
       recentFailuresQuery.refetch();
       criticalFailuresQuery.refetch();
     },

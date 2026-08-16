@@ -3,6 +3,8 @@ package com.ocp.eia.modules.knowledge.application;
 import com.ocp.eia.modules.knowledge.domain.model.QuerySignals;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class QuerySignalExtractorTest {
@@ -48,6 +50,38 @@ class QuerySignalExtractorTest {
         QuerySignals signals = QuerySignalExtractor.extract("2310-TRV surintensité traverse");
 
         assertTrue(signals.faultCodes().contains("2310-TRV"));
+    }
+
+    @Test
+    void extract_calendarYear_notTreatedAsFaultCode() {
+        QuerySignals signals = QuerySignalExtractor.extract("Pompe PV ne démarre plus depuis 2024");
+
+        assertFalse(signals.hasFaultCodes());
+        assertFalse(signals.faultCodes().contains("2024"));
+    }
+
+    @Test
+    void extract_yearBeforeRealCode_keepsOnlyRealCode() {
+        QuerySignals signals = QuerySignalExtractor.extract("depuis 2024 le variateur affiche E21");
+
+        assertEquals(List.of("E21"), signals.faultCodes());
+        assertFalse(signals.faultCodes().contains("2024"));
+    }
+
+    @Test
+    void extract_2310StillRecognizedAsFaultCode() {
+        QuerySignals signals = QuerySignalExtractor.extract("2310 surintensité ABB filature");
+
+        assertTrue(signals.faultCodes().contains("2310"));
+    }
+
+    @Test
+    void isLikelyCalendarYear_distinguishesYearFromIndustrialCode() {
+        assertTrue(QuerySignalExtractor.isLikelyCalendarYear("2024"));
+        assertTrue(QuerySignalExtractor.isLikelyCalendarYear("1999"));
+        assertFalse(QuerySignalExtractor.isLikelyCalendarYear("2310"));
+        assertFalse(QuerySignalExtractor.isLikelyCalendarYear("E21"));
+        assertFalse(QuerySignalExtractor.isLikelyCalendarYear("1500"));
     }
 
     @Test

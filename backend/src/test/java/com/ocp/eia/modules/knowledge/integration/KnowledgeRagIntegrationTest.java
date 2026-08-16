@@ -305,7 +305,7 @@ class KnowledgeRagIntegrationTest {
         AiAssistResponse response = ragAssistUseCase.assist(request);
 
         assertTrue(response.similarInterventions().isEmpty());
-        assertEquals("Aucune intervention similaire validée trouvée",
+        assertEquals("Aucune intervention validée ni document technique suffisamment proche",
                 response.suggestions().probableCauses().get(0));
         assertNotNull(response.disclaimer());
         verify(llmProviderPort, never()).complete(anyString(), anyString());

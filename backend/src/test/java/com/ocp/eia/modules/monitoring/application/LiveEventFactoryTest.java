@@ -45,6 +45,6 @@ class LiveEventFactoryTest {
 
         assertEquals("AI_UNAVAILABLE", response.type());
         assertEquals("ai", response.category());
-        assertEquals("Embedding indisponible", response.message());
+        assertEquals("Service d'assistance IA temporairement indisponible", response.message());
     }
 }

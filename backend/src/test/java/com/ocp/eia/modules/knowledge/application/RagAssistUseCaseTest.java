@@ -64,7 +64,7 @@ class RagAssistUseCaseTest {
     void assist_noEvidence_returnsFallbackSuggestions() {
         AiAssistRequest request = new AiAssistRequest(null, null, "Panne variateur", null);
         AiSuggestions fallback = new AiSuggestions(
-                List.of("Aucune intervention similaire validée trouvée"),
+                List.of("Aucune intervention validée ni document technique suffisamment proche"),
                 List.of("Consulter la documentation constructeur"),
                 "Pas assez de données",
                 "Documentez"
@@ -76,7 +76,7 @@ class RagAssistUseCaseTest {
         AiAssistResponse response = useCase.assist(request);
 
         assertTrue(response.similarInterventions().isEmpty());
-        assertEquals("Aucune intervention similaire validée trouvée", response.suggestions().probableCauses().get(0));
+        assertEquals("Aucune intervention validée ni document technique suffisamment proche", response.suggestions().probableCauses().get(0));
         verify(ragObservabilityService).recordSuccessfulQuery();
         verify(diagnosticStatsService).record(any());
     }

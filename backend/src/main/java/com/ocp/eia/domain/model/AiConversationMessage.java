@@ -35,7 +35,7 @@ public class AiConversationMessage {
     private String content;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
+    @Column
     private JsonNode payload;
 
     @CreationTimestamp

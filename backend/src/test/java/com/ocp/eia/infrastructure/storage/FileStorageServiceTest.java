@@ -14,6 +14,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class FileStorageServiceTest {
 
+    private static final String DOCX_MIME =
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+    /** Minimal ZIP/DOCX magic bytes (PK\\x03\\x04…). */
+    private static byte[] docxMagicBytes() {
+        return new byte[]{0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00, 0x08};
+    }
+
     @TempDir
     Path tempDir;
 
@@ -27,33 +35,33 @@ class FileStorageServiceTest {
     }
 
     @Test
-    void store_docxWithZipMimeType_isAccepted() {
+    void store_docxWithZipMagic_isAccepted() {
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "rapport.docx",
-                "application/zip",
-                "docx-content".getBytes()
+                DOCX_MIME,
+                docxMagicBytes()
         );
 
         FileStorageService.StoredFile stored = fileStorageService.store(UUID.randomUUID(), file);
 
         assertNotNull(stored);
-        assertEquals("application/zip", stored.contentType());
+        assertEquals(DOCX_MIME, stored.contentType());
     }
 
     @Test
-    void store_docxWithOctetStreamMimeType_isAccepted() {
+    void store_docxWithDeclaredMimeAndZipMagic_isAccepted() {
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "rapport.docx",
                 "application/octet-stream",
-                "docx-content".getBytes()
+                docxMagicBytes()
         );
 
         FileStorageService.StoredFile stored = fileStorageService.store(UUID.randomUUID(), file);
 
         assertNotNull(stored);
-        assertEquals("application/octet-stream", stored.contentType());
+        assertEquals(DOCX_MIME, stored.contentType());
     }
 
     @Test
@@ -78,7 +86,7 @@ class FileStorageServiceTest {
                 "file",
                 "rapport.pdf",
                 "application/pdf",
-                "pdf-content".getBytes()
+                new byte[]{0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34}
         );
 
         FileStorageService.StoredFile stored = fileStorageService.store(UUID.randomUUID(), file);

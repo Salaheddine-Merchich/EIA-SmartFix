@@ -11,7 +11,7 @@
 - [ ] Reindex admin sans saturer le pool Hikari
 - [ ] Backup DB + procédure restore documentées
 - [ ] Seeds démo absents ou désactivés en prod (`DevDataInitializer` hors prod)
-- [ ] CI : `mvn verify` + `npm test` + `npm run build`
+- [x] CI : `mvn verify` + `npm test` + `npm run build` (GitHub Actions `.github/workflows/ci.yml`)
 - [ ] Monitoring health + métriques RAG
 - [x] JWT SSE via Bearer (`fetch` stream) — query `access_token` retiré ([SECURITY.md](SECURITY.md))
 - [ ] Runbook incident IA (circuit breaker, fallback, Ollama down)

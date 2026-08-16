@@ -7,6 +7,7 @@ import com.ocp.eia.application.dto.UserDto.UserResponse;
 import com.ocp.eia.config.AppProperties;
 import com.ocp.eia.config.SecurityConfig;
 import com.ocp.eia.domain.model.Role;
+import com.ocp.eia.infrastructure.security.AuthCookieService;
 import com.ocp.eia.infrastructure.security.CustomUserDetailsService;
 import com.ocp.eia.infrastructure.security.JwtAuthenticationFilter;
 import com.ocp.eia.infrastructure.security.JwtService;
@@ -14,8 +15,10 @@ import com.ocp.eia.infrastructure.security.RestAccessDeniedHandler;
 import com.ocp.eia.infrastructure.security.RestAuthenticationEntryPoint;
 import com.ocp.eia.modules.asset.application.CreateEquipmentUseCase;
 import com.ocp.eia.modules.asset.application.DeleteEquipmentUseCase;
+import com.ocp.eia.modules.asset.application.DownloadEquipmentSchemaUseCase;
 import com.ocp.eia.modules.asset.application.FindEquipmentByIdUseCase;
 import com.ocp.eia.modules.asset.application.GetEquipmentHistoryUseCase;
+import com.ocp.eia.modules.asset.application.ListEquipmentSchemasUseCase;
 import com.ocp.eia.modules.asset.application.SearchEquipmentUseCase;
 import com.ocp.eia.modules.asset.application.UpdateEquipmentUseCase;
 import com.ocp.eia.modules.iam.application.CreateUserUseCase;
@@ -81,6 +84,7 @@ class SecurityRbacWebMvcTest {
 
     @MockBean private JwtService jwtService;
     @MockBean private CustomUserDetailsService userDetailsService;
+    @MockBean private AuthCookieService authCookieService;
 
     @MockBean private SearchEquipmentUseCase searchEquipmentUseCase;
     @MockBean private FindEquipmentByIdUseCase findEquipmentByIdUseCase;
@@ -88,6 +92,8 @@ class SecurityRbacWebMvcTest {
     @MockBean private CreateEquipmentUseCase createEquipmentUseCase;
     @MockBean private UpdateEquipmentUseCase updateEquipmentUseCase;
     @MockBean private DeleteEquipmentUseCase deleteEquipmentUseCase;
+    @MockBean private ListEquipmentSchemasUseCase listEquipmentSchemasUseCase;
+    @MockBean private DownloadEquipmentSchemaUseCase downloadEquipmentSchemaUseCase;
 
     @MockBean private ListFailuresUseCase listFailuresUseCase;
     @MockBean private FindFailureByIdUseCase findFailureByIdUseCase;

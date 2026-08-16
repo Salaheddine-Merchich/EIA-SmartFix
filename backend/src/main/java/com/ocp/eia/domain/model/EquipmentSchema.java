@@ -3,6 +3,8 @@ package com.ocp.eia.domain.model;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -44,7 +46,8 @@ public class EquipmentSchema {
     @Column(columnDefinition = "TEXT")
     private String caption;
 
-    @Column(name = "trigger_keywords", columnDefinition = "TEXT[]", nullable = false)
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "trigger_keywords", nullable = false)
     private String[] triggerKeywords;
 
     @Column(nullable = false)

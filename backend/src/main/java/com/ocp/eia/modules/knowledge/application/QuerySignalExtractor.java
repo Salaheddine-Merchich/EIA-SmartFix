@@ -87,7 +87,11 @@ public final class QuerySignalExtractor {
         Set<String> codes = new LinkedHashSet<>();
         Matcher matcher = CODE_PATTERNS.matcher(normalized);
         while (matcher.find()) {
-            codes.add(normalizeCode(matcher.group()));
+            String code = normalizeCode(matcher.group());
+            if (isLikelyCalendarYear(code)) {
+                continue;
+            }
+            codes.add(code);
         }
 
         Optional<String> manufacturer = detectManufacturer(lower);
@@ -119,6 +123,15 @@ public final class QuerySignalExtractor {
             return "OUt" + trimmed.replaceAll("(?i)^ou?t", "");
         }
         return trimmed.toUpperCase(Locale.ROOT);
+    }
+
+    /** Bare 4-digit tokens in 1900–2099 are calendar years, not fault codes (e.g. 2310 stays). */
+    static boolean isLikelyCalendarYear(String code) {
+        if (code == null || !code.matches("\\d{4}")) {
+            return false;
+        }
+        int year = Integer.parseInt(code);
+        return year >= 1900 && year <= 2099;
     }
 
     private static Optional<String> detectManufacturer(String lower) {

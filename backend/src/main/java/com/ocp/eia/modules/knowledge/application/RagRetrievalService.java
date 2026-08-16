@@ -257,8 +257,8 @@ public class RagRetrievalService {
         if (!appProperties.getAi().getRag().isCodeNotFoundEnabled() || !querySignals.hasFaultCodes()) {
             return false;
         }
-        String primaryCode = querySignals.primaryFaultCode();
-        return primaryCode != null && !exactFaultCodeSearchPort.existsFaultCode(primaryCode);
+        // Abort only when every extracted code is unknown — a year+real-code mix must still retrieve.
+        return querySignals.faultCodes().stream().noneMatch(exactFaultCodeSearchPort::existsFaultCode);
     }
 
     private List<SimilarIntervention> findExactMatches(QuerySignals querySignals, int topK) {

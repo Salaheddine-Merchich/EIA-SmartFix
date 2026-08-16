@@ -11,6 +11,7 @@ Plateforme web collaborative pour la gestion, l'historisation et l'assistance IA
 | Base de données | PostgreSQL 16 + pgvector (hôte : port **15432**) |
 | IA | Ollama (nomic-embed-text + llama3.2) — RAG on-premise |
 | Déploiement | Docker Compose |
+| CI | GitHub Actions (`.github/workflows/ci.yml`) — `mvn verify` + `npm test` / `build` sur `main` |
 
 ## Architecture
 

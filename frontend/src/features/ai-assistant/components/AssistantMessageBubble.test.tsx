@@ -25,8 +25,10 @@ describe('AssistantMessageBubble', () => {
 
     expect(screen.getByText('Résumé')).toBeInTheDocument();
     expect(screen.getByText('Piste ventilation')).toBeInTheDocument();
-    expect(screen.getByText('Filtre obstrué')).toBeInTheDocument();
-    expect(screen.getByText('Nettoyer le filtre')).toBeInTheDocument();
+    expect(screen.getByText('Causes probables')).toBeInTheDocument();
+    expect(screen.getByTestId('probable-cause')).toHaveTextContent('Filtre obstrué');
+    expect(screen.getByText('Actions recommandées')).toBeInTheDocument();
+    expect(screen.getByTestId('recommended-action')).toHaveTextContent('Nettoyer le filtre');
     expect(screen.getByText('Assistance uniquement')).toBeInTheDocument();
   });
 

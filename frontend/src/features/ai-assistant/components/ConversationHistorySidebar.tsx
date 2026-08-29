@@ -2,6 +2,7 @@ import { memo } from 'react';
 import type { AiConversationSummary } from '@/shared/types';
 import { ASSISTANT_LAYOUT } from '../constants/layout';
 import { compactHistoryTitle } from '../utils/compactHistoryTitle';
+import { cn } from '@/design-system';
 
 interface ConversationHistorySidebarProps {
   items: AiConversationSummary[];
@@ -11,6 +12,9 @@ interface ConversationHistorySidebarProps {
   onNew: () => void;
   onDelete: (id: string) => void;
   onDeleteAll: () => void;
+  onClose?: () => void;
+  showHeader?: boolean;
+  className?: string;
 }
 
 function formatUpdatedAt(value: string) {
@@ -32,22 +36,57 @@ function ConversationHistorySidebarComponent({
   onNew,
   onDelete,
   onDeleteAll,
+  onClose,
+  showHeader = true,
+  className,
 }: ConversationHistorySidebarProps) {
   return (
     <aside
-      className={`flex h-full max-h-56 min-h-0 flex-col border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 lg:max-h-none ${ASSISTANT_LAYOUT.historyPanelWidth} lg:border-b-0 lg:border-r`}
+      className={cn(
+        'flex h-full min-h-0 flex-col bg-white dark:bg-slate-900',
+        ASSISTANT_LAYOUT.historyPanelWidth,
+        showHeader && 'border-r border-slate-200 dark:border-slate-800',
+        className,
+      )}
       aria-label="Historique des conversations"
     >
-      <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-3 py-3 dark:border-slate-800">
-        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Historique</h2>
-        <button
-          type="button"
-          onClick={onNew}
-          className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
-        >
-          Nouveau
-        </button>
-      </div>
+      {showHeader ? (
+        <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-3 py-3 dark:border-slate-800">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Historique</h2>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={onNew}
+              className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+            >
+              Nouveau
+            </button>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                title="Fermer l'historique"
+                aria-label="Fermer l'historique"
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="border-b border-slate-200 px-3 py-2 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={onNew}
+            className="w-full rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+          >
+            Nouvelle conversation
+          </button>
+        </div>
+      )}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
         {loading && items.length === 0 && (

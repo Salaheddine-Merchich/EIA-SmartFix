@@ -1,5 +1,7 @@
 import { type FormEvent, useState } from 'react';
 import {
+  EnterpriseAvatar,
+  EnterpriseBadge,
   EnterpriseButton,
   EnterpriseCard,
   EnterpriseErrorState,
@@ -9,6 +11,9 @@ import {
   EnterpriseSelect,
   EnterpriseSkeletonTable,
   EnterpriseTable,
+  formatRoleLabel,
+  roleAvatarClass,
+  roleVariant,
   useDisclosure,
   useEnterpriseConfirm,
   useEnterpriseToast,
@@ -126,6 +131,12 @@ export default function UsersPage() {
         actions={<EnterpriseButton onClick={openCreate}>Ajouter</EnterpriseButton>}
       />
 
+      {!isLoading && !isError && users.length > 0 && (
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          {users.length} utilisateur{users.length > 1 ? 's' : ''} enregistré{users.length > 1 ? 's' : ''}
+        </p>
+      )}
+
       <EnterpriseCard padding="none">
         {isLoading && <EnterpriseSkeletonTable rows={5} />}
         {isError && (
@@ -141,19 +152,69 @@ export default function UsersPage() {
             keyExtractor={(u) => u.id}
             emptyMessage="Aucun utilisateur enregistré"
             columns={[
-              { key: 'name', header: 'Nom', render: (u) => u.nomPrenom },
-              { key: 'email', header: 'Email', render: (u) => u.email },
-              { key: 'role', header: 'Rôle', render: (u) => u.role.replace('_', ' ') },
-              { key: 'active', header: 'Actif', render: (u) => (u.actif ? 'Oui' : 'Non') },
+              {
+                key: 'name',
+                header: 'Nom',
+                width: '14rem',
+                render: (u) => (
+                  <div className="flex min-w-0 items-center gap-3">
+                    <EnterpriseAvatar
+                      name={u.nomPrenom}
+                      size="sm"
+                      className={roleAvatarClass(u.role)}
+                    />
+                    <span className="truncate font-medium text-slate-900 dark:text-slate-100" title={u.nomPrenom}>
+                      {u.nomPrenom}
+                    </span>
+                  </div>
+                ),
+              },
+              {
+                key: 'email',
+                header: 'Email',
+                render: (u) => (
+                  <span className="block truncate text-slate-600 dark:text-slate-400" title={u.email}>
+                    {u.email}
+                  </span>
+                ),
+              },
+              {
+                key: 'role',
+                header: 'Rôle',
+                width: '10rem',
+                render: (u) => (
+                  <EnterpriseBadge label={formatRoleLabel(u.role)} variant={roleVariant(u.role)} />
+                ),
+              },
+              {
+                key: 'active',
+                header: 'Actif',
+                width: '6rem',
+                align: 'center',
+                render: (u) => (
+                  <EnterpriseBadge
+                    label={u.actif ? 'Actif' : 'Inactif'}
+                    variant={u.actif ? 'success' : 'default'}
+                  />
+                ),
+              },
               {
                 key: 'actions',
                 header: 'Actions',
+                width: '200px',
+                align: 'left',
+                nowrap: true,
                 render: (u) => (
-                  <div className="flex gap-1">
-                    <EnterpriseButton variant="ghost" size="sm" onClick={() => openEdit(u)}>
+                  <div className="flex items-center gap-1.5 whitespace-nowrap">
+                    <EnterpriseButton variant="secondary" size="sm" onClick={() => openEdit(u)}>
                       Modifier
                     </EnterpriseButton>
-                    <EnterpriseButton variant="ghost" size="sm" onClick={() => handleDelete(u.id)}>
+                    <EnterpriseButton
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                      onClick={() => handleDelete(u.id)}
+                    >
                       Supprimer
                     </EnterpriseButton>
                   </div>

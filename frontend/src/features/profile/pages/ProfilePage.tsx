@@ -4,6 +4,9 @@ import {
   EnterpriseCard,
   EnterprisePageHeader,
   EnterprisePanel,
+  formatRoleLabel,
+  roleAvatarClass,
+  roleVariant,
 } from '@/design-system';
 import { useAuth } from '@/features/auth/context/AuthContext';
 
@@ -17,7 +20,7 @@ export default function ProfilePage() {
       <EnterprisePageHeader title="Profil" description="Informations de votre compte" />
       <EnterpriseCard>
         <div className="flex items-center gap-4">
-          <EnterpriseAvatar name={user.nomPrenom} size="lg" />
+          <EnterpriseAvatar name={user.nomPrenom} size="lg" className={roleAvatarClass(user.role)} />
           <div>
             <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">{user.nomPrenom}</p>
             <p className="text-sm text-slate-500 dark:text-slate-400">{user.email}</p>
@@ -28,7 +31,7 @@ export default function ProfilePage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm text-slate-600 dark:text-slate-400">Rôle</span>
-            <EnterpriseBadge label={user.role.replace('_', ' ')} variant="info" />
+            <EnterpriseBadge label={formatRoleLabel(user.role)} variant={roleVariant(user.role)} />
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-slate-600 dark:text-slate-400">Organisation</span>

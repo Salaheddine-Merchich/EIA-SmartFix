@@ -5,7 +5,7 @@ export const ASSISTANT_LAYOUT = {
   pagePaddingY: 'py-4',
   threadGap: 'gap-4',
   sidePanelWidth: 'lg:w-[320px] xl:w-[360px]',
-  historyPanelWidth: 'lg:w-[272px]',
+  historyPanelWidth: 'w-[272px]',
   badgeText: 'text-xs',
 } as const;
 

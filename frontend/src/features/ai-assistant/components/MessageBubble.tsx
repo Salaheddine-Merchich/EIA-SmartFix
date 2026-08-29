@@ -90,13 +90,17 @@ function AssistantMessageBubbleComponent({
 
               {suggestions.probableCauses.length > 0 && !isEmpty && (
                 <section>
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Causes probables
                   </h3>
                   <ul className="mt-2 space-y-1.5">
                     {suggestions.probableCauses.map((cause, index) => (
-                      <li key={`${cause}-${index}`} className="flex gap-2 leading-relaxed">
-                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+                      <li
+                        key={`${cause}-${index}`}
+                        data-testid="probable-cause"
+                        className="flex gap-2 leading-relaxed"
+                      >
+                        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-red-500" aria-hidden="true" />
                         <span>{cause}</span>
                       </li>
                     ))}
@@ -106,13 +110,17 @@ function AssistantMessageBubbleComponent({
 
               {suggestions.correctiveActions.length > 0 && !isEmpty && (
                 <section>
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Actions recommandées
                   </h3>
                   <ul className="mt-2 space-y-1.5">
                     {suggestions.correctiveActions.map((action, index) => (
-                      <li key={`${action}-${index}`} className="flex gap-2 leading-relaxed">
-                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                      <li
+                        key={`${action}-${index}`}
+                        data-testid="recommended-action"
+                        className="flex gap-2 leading-relaxed"
+                      >
+                        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
                         <span>{action}</span>
                       </li>
                     ))}

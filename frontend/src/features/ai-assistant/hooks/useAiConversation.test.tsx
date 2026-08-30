@@ -47,6 +47,7 @@ import { aiApi } from '@/shared/api';
 const assistMock = vi.mocked(aiApi.assist);
 const createConversationMock = vi.mocked(aiApi.createConversation);
 const appendMessagesMock = vi.mocked(aiApi.appendConversationMessages);
+const deleteConversationMock = vi.mocked(aiApi.deleteConversation);
 const listConversationsMock = vi.mocked(aiApi.listConversations);
 const wrapper = createAiConversationWrapper();
 
@@ -90,8 +91,10 @@ describe('useAiConversation', () => {
     assistMock.mockReset();
     createConversationMock.mockClear();
     appendMessagesMock.mockClear();
+    deleteConversationMock.mockClear();
     listConversationsMock.mockReset();
     listConversationsMock.mockResolvedValue([]);
+    deleteConversationMock.mockResolvedValue(undefined as never);
     createConversationMock.mockImplementation(async (title?: string) => ({
       id: 'server-conv-1',
       title: title ?? 'Nouvelle conversation',
@@ -213,4 +216,61 @@ describe('useAiConversation', () => {
       expect(appendMessagesMock).toHaveBeenCalled();
     });
   });
+
+  it('does not stamp or append when clearConversation runs during slow create', async () => {
+    let clearedDuringCreate = false;
+    let createStarted = false;
+
+    createConversationMock.mockImplementation(async (title?: string) => {
+      createStarted = true;
+      await new Promise((r) => setTimeout(r, 80));
+      return {
+        id: 'orphan-conv',
+        title: title ?? 'Nouvelle conversation',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: [],
+      };
+    });
+
+    assistMock.mockResolvedValue({
+      ...mockResponse,
+      similarInterventions: [],
+      suggestions: {
+        summary: 'OK',
+        probableCauses: ['Cause'],
+        correctiveActions: ['Action'],
+        advice: 'Conseil',
+      },
+    });
+
+    const { result } = renderHook(() => useAiConversation(), { wrapper });
+
+    act(() => {
+      void result.current.sendMessage('Panne variateur abandonnee');
+    });
+
+    await waitFor(() => {
+      expect(result.current.messages).toHaveLength(2);
+    });
+    await waitFor(() => {
+      expect(createStarted).toBe(true);
+    });
+
+    act(() => {
+      clearedDuringCreate = true;
+      result.current.clearConversation();
+    });
+
+    expect(clearedDuringCreate).toBe(true);
+    expect(result.current.messages).toHaveLength(0);
+
+    await waitFor(() => {
+      expect(deleteConversationMock).toHaveBeenCalledWith('orphan-conv');
+    });
+
+    expect(appendMessagesMock).not.toHaveBeenCalled();
+    expect(result.current.conversationId).toBeNull();
+    expect(result.current.messages).toHaveLength(0);
+  }, 10_000);
 });

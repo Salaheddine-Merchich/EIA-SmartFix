@@ -1,6 +1,6 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { EnterpriseDrawer, useEnterpriseConfirm } from '@/design-system';
+import { cn, EnterpriseDrawer, useEnterpriseConfirm } from '@/design-system';
 import { AiAssistantHeader } from '../components/AiAssistantHeader';
 import { AiComposer } from '../components/AiComposer';
 import { ConversationThread } from '../components/ConversationThread';
@@ -10,6 +10,7 @@ import { ConversationStateBanner } from '../components/ConversationStateBanner';
 import { AiDiagnosticTracePanel } from '../explainability';
 import { useAiConversation } from '../hooks/useAiConversation';
 import { useGenerationNavigationGuard } from '../hooks/useGenerationNavigationGuard';
+import { useHistorySidebarOpen } from '../hooks/useHistorySidebarOpen';
 import { ASSISTANT_LAYOUT } from '../constants/layout';
 import type { AiDiagnosticTrace } from '@/shared/types';
 
@@ -19,9 +20,14 @@ interface AiAssistantLocationState {
   prefilledDescription?: string;
 }
 
+function isMobileViewport() {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches;
+}
+
 export default function AiAssistantPage() {
   const location = useLocation();
   const { confirm } = useEnterpriseConfirm();
+  const { open: historyOpen, toggleSidebar, closeSidebar } = useHistorySidebarOpen();
   const {
     messages,
     loading,
@@ -73,10 +79,67 @@ export default function AiAssistantPage() {
     setTraceOpen(true);
   };
 
+  const handleSelectConversation = useCallback(
+    (id: string) => {
+      void openConversation(id);
+      if (isMobileViewport()) {
+        closeSidebar();
+      }
+    },
+    [openConversation, closeSidebar],
+  );
+
+  const handleDeleteConversation = useCallback(
+    (id: string) => {
+      void (async () => {
+        const ok = await confirm({
+          title: 'Supprimer cette conversation',
+          message:
+            'Cette conversation sera définitivement retirée de votre historique. Cette action est irréversible.',
+          confirmLabel: 'Supprimer',
+          cancelLabel: 'Annuler',
+          variant: 'danger',
+        });
+        if (ok) {
+          await deleteConversation(id);
+        }
+      })();
+    },
+    [confirm, deleteConversation],
+  );
+
+  const handleDeleteAllConversations = useCallback(() => {
+    void (async () => {
+      const ok = await confirm({
+        title: 'Vider l’historique',
+        message:
+          'Toutes vos conversations avec l’assistant seront définitivement supprimées. Cette action est irréversible.',
+        confirmLabel: 'Tout supprimer',
+        cancelLabel: 'Annuler',
+        variant: 'danger',
+      });
+      if (ok) {
+        await clearAllHistory();
+      }
+    })();
+  }, [confirm, clearAllHistory]);
+
+  const historySidebarProps = {
+    items: history,
+    activeId: conversationId,
+    loading: historyLoading,
+    onSelect: handleSelectConversation,
+    onNew: clearConversation,
+    onDelete: handleDeleteConversation,
+    onDeleteAll: handleDeleteAllConversations,
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-white dark:bg-slate-950">
       <AiAssistantHeader
         status={status}
+        historyOpen={historyOpen}
+        onToggleHistory={toggleSidebar}
         contextHint={
           assistContext.failureId || assistContext.equipmentId
             ? 'Contexte panne actif — les suggestions seront ciblées sur cet équipement.'
@@ -84,48 +147,21 @@ export default function AiAssistantPage() {
         }
       />
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-        <div className="shrink-0 lg:h-full">
+      <div className="flex min-h-0 flex-1 overflow-hidden lg:flex-row">
+        <div
+          className={cn(
+            'hidden shrink-0 overflow-hidden transition-[width] duration-200 ease-out lg:block lg:h-full',
+            historyOpen ? 'w-[272px]' : 'w-0',
+          )}
+          aria-hidden={!historyOpen}
+        >
           <ConversationHistorySidebar
-            items={history}
-            activeId={conversationId}
-            loading={historyLoading}
-            onSelect={(id) => {
-              void openConversation(id);
-            }}
-            onNew={clearConversation}
-            onDelete={(id) => {
-              void (async () => {
-                const ok = await confirm({
-                  title: 'Supprimer cette conversation',
-                  message:
-                    'Cette conversation sera définitivement retirée de votre historique. Cette action est irréversible.',
-                  confirmLabel: 'Supprimer',
-                  cancelLabel: 'Annuler',
-                  variant: 'danger',
-                });
-                if (ok) {
-                  await deleteConversation(id);
-                }
-              })();
-            }}
-            onDeleteAll={() => {
-              void (async () => {
-                const ok = await confirm({
-                  title: 'Vider l’historique',
-                  message:
-                    'Toutes vos conversations avec l’assistant seront définitivement supprimées. Cette action est irréversible.',
-                  confirmLabel: 'Tout supprimer',
-                  cancelLabel: 'Annuler',
-                  variant: 'danger',
-                });
-                if (ok) {
-                  await clearAllHistory();
-                }
-              })();
-            }}
+            {...historySidebarProps}
+            onClose={closeSidebar}
+            className="h-full"
           />
         </div>
+
         <section className="flex min-h-0 flex-1 flex-col lg:min-w-0">
           <div className="min-h-0 flex-1">
             <ConversationThread
@@ -160,6 +196,21 @@ export default function AiAssistantPage() {
             <SuggestionCards items={similarInterventions} loading={loading} />
           </div>
         )}
+      </div>
+
+      <div className="lg:hidden">
+        <EnterpriseDrawer
+          open={historyOpen}
+          onClose={closeSidebar}
+          title="Historique"
+          side="left"
+        >
+          <ConversationHistorySidebar
+            {...historySidebarProps}
+            showHeader={false}
+            className="-m-5 h-[calc(100%+2.5rem)] w-[calc(100%+2.5rem)] border-0"
+          />
+        </EnterpriseDrawer>
       </div>
 
       <EnterpriseDrawer

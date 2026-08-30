@@ -58,3 +58,30 @@ export function validationVariant(s: string): BadgeVariant {
     default: return 'default';
   }
 }
+
+export function roleVariant(role: string): BadgeVariant {
+  switch (role) {
+    case 'ADMIN': return 'danger';
+    case 'RESPONSABLE_EIA': return 'warning';
+    case 'TECHNICIEN': return 'info';
+    default: return 'default';
+  }
+}
+
+export function formatRoleLabel(role: string): string {
+  switch (role) {
+    case 'ADMIN': return 'Administrateur';
+    case 'RESPONSABLE_EIA': return 'Responsable EIA';
+    case 'TECHNICIEN': return 'Technicien';
+    default: return role.replace('_', ' ');
+  }
+}
+
+export function roleAvatarClass(role: string): string {
+  switch (role) {
+    case 'ADMIN': return 'bg-red-600';
+    case 'RESPONSABLE_EIA': return 'bg-amber-600';
+    case 'TECHNICIEN': return 'bg-sky-600';
+    default: return 'bg-slate-600';
+  }
+}

@@ -2,4 +2,4 @@
 
 | Bug | PR | Status | Date |
 |-----|-----|--------|------|
-| QuerySignalExtractor / RagRetrievalService — bare `\d{4}` years (e.g. 2024) treated as fault codes → RAG `codeNotFound` short-circuit | https://github.com/Salaheddine-Merchich/EIA-SmartFix/pull/2 | open | 2026-08-16 |
+| AiConversationProvider.persistTurn — clear/open during in-flight create/append stamps wrong conversation id and can write the previous turn onto another thread | https://github.com/Salaheddine-Merchich/EIA-SmartFix/pull/5 | open | 2026-08-30 |

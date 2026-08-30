@@ -110,6 +110,12 @@ export default function EquipmentPage() {
         onChange={(e) => setSearch(e.target.value)}
       />
 
+      {!isLoading && !isError && items.length > 0 && (
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          {items.length} équipement{items.length > 1 ? 's' : ''} référencé{items.length > 1 ? 's' : ''}
+        </p>
+      )}
+
       <EnterpriseCard padding="none">
         {isLoading && <EnterpriseSkeletonTable rows={6} />}
         {isError && (
@@ -125,23 +131,70 @@ export default function EquipmentPage() {
             keyExtractor={(e) => e.id}
             emptyMessage="Aucun équipement enregistré"
             columns={[
-              { key: 'code', header: 'Code', render: (e) => <span className="font-medium">{e.code}</span> },
-              { key: 'designation', header: 'Désignation', render: (e) => e.designation },
-              { key: 'famille', header: 'Famille', render: (e) => e.famille || '—' },
-              { key: 'zone', header: 'Zone', render: (e) => e.zone || '—' },
-              { key: 'failures', header: 'Pannes', render: (e) => e.failureCount },
+              {
+                key: 'code',
+                header: 'Code',
+                width: '8rem',
+                nowrap: true,
+                render: (e) => (
+                  <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">{e.code}</span>
+                ),
+              },
+              {
+                key: 'designation',
+                header: 'Désignation',
+                render: (e) => (
+                  <span className="block truncate font-medium text-slate-900 dark:text-slate-100" title={e.designation}>
+                    {e.designation}
+                  </span>
+                ),
+              },
+              {
+                key: 'famille',
+                header: 'Famille',
+                width: '9rem',
+                render: (e) =>
+                  e.famille ? (
+                    <EnterpriseBadge label={e.famille} variant="info" />
+                  ) : (
+                    <span className="text-slate-400">—</span>
+                  ),
+              },
+              {
+                key: 'zone',
+                header: 'Zone',
+                width: '9rem',
+                render: (e) => (
+                  <span className="text-slate-600 dark:text-slate-400">{e.zone || '—'}</span>
+                ),
+              },
+              {
+                key: 'failures',
+                header: 'Pannes',
+                width: '5rem',
+                align: 'center',
+                render: (e) => (
+                  <EnterpriseBadge
+                    label={String(e.failureCount)}
+                    variant={e.failureCount > 0 ? 'danger' : 'default'}
+                  />
+                ),
+              },
               {
                 key: 'actions',
                 header: 'Actions',
+                width: '280px',
+                align: 'left',
+                nowrap: true,
                 render: (e) => (
-                  <div className="flex flex-wrap gap-2">
-                    <EnterpriseButton variant="ghost" size="sm" onClick={() => showHistory(e)}>
+                  <div className="flex items-center gap-1.5 whitespace-nowrap">
+                    <EnterpriseButton variant="secondary" size="sm" onClick={() => showHistory(e)}>
                       Historique
                     </EnterpriseButton>
                     {hasRole('ADMIN') && (
                       <>
                         <EnterpriseButton
-                          variant="ghost"
+                          variant="secondary"
                           size="sm"
                           onClick={() => {
                             setEditId(e.id);
@@ -157,7 +210,12 @@ export default function EquipmentPage() {
                         >
                           Modifier
                         </EnterpriseButton>
-                        <EnterpriseButton variant="ghost" size="sm" onClick={() => handleDelete(e.id)}>
+                        <EnterpriseButton
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                          onClick={() => handleDelete(e.id)}
+                        >
                           Supprimer
                         </EnterpriseButton>
                       </>

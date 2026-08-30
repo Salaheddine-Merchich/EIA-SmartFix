@@ -63,6 +63,11 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
   const [history, setHistory] = useState<AiConversationSummary[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const conversationIdRef = useRef<string | null>(null);
+  const persistEpochRef = useRef(0);
+
+  const bumpPersistEpoch = useCallback(() => {
+    persistEpochRef.current += 1;
+  }, []);
 
   const invalidateDashboard = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
@@ -87,10 +92,15 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
   const persistTurn = useCallback(
     async (userContent: string, assistant: AssistantMessage) => {
       if (!assistant.response) return;
+      const epoch = persistEpochRef.current;
       try {
         let id = conversationIdRef.current;
         if (!id) {
           const created = await aiApi.createConversation(compactHistoryTitle(userContent));
+          if (epoch !== persistEpochRef.current) {
+            void aiApi.deleteConversation(created.id).catch(() => {});
+            return;
+          }
           id = created.id;
           conversationIdRef.current = id;
           setConversation((prev) => ({
@@ -99,8 +109,11 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
             title: created.title || prev.title,
           }));
         }
+        if (epoch !== persistEpochRef.current) return;
         await aiApi.appendConversationMessages(id, userContent, assistant.response);
+        if (epoch !== persistEpochRef.current) return;
         await refreshHistory();
+        if (epoch !== persistEpochRef.current) return;
         invalidateDashboard();
       } catch {
         // Keep the local thread if persistence fails.
@@ -119,6 +132,7 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
   const loadingMessage = useLoadingStatusMessage(loading);
 
   useEffect(() => {
+    bumpPersistEpoch();
     abortActive(true);
     setLoading(false);
     setStatus('online');
@@ -126,7 +140,7 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
     setConversation(createConversation());
     setAssistContext({});
     setComposerPrefill('');
-  }, [user?.email, abortActive, setLoading]);
+  }, [user?.email, abortActive, setLoading, bumpPersistEpoch]);
 
   useEffect(() => {
     if (!user) {
@@ -135,6 +149,7 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
   }, [user, abortActive]);
 
   const clearConversation = useCallback(() => {
+    bumpPersistEpoch();
     abortActive(true);
     setLoading(false);
     conversationIdRef.current = null;
@@ -142,10 +157,11 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
     setStatus('online');
     setAssistContext({});
     setComposerPrefill('');
-  }, [abortActive, setLoading]);
+  }, [abortActive, setLoading, bumpPersistEpoch]);
 
   const openConversation = useCallback(
     async (id: string) => {
+      bumpPersistEpoch();
       abortActive(true);
       setLoading(false);
       const detail = await aiApi.getConversation(id);
@@ -155,7 +171,7 @@ export function AiConversationProvider({ children }: { children: ReactNode }) {
       setAssistContext({});
       setComposerPrefill('');
     },
-    [abortActive, setLoading],
+    [abortActive, setLoading, bumpPersistEpoch],
   );
 
   const deleteConversation = useCallback(

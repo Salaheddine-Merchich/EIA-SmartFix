@@ -2,6 +2,8 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   EnterpriseAvatar,
   EnterpriseButton,
+  formatRoleLabel,
+  roleAvatarClass,
   useTheme,
 } from '@/design-system';
 import { useAuth } from '@/features/auth/context/AuthContext';
@@ -56,10 +58,16 @@ export default function AppLayout() {
         </nav>
         <div className="space-y-3 border-t border-slate-800 p-4">
           <div className="flex items-center gap-3">
-            <EnterpriseAvatar name={user?.nomPrenom ?? 'User'} size="sm" />
+            <EnterpriseAvatar
+              name={user?.nomPrenom ?? 'User'}
+              size="sm"
+              className={user?.role ? roleAvatarClass(user.role) : undefined}
+            />
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-slate-200">{user?.nomPrenom}</p>
-              <p className="truncate text-xs text-slate-500">{user?.role?.replace('_', ' ')}</p>
+              <p className="truncate text-xs text-slate-500">
+                {user?.role ? formatRoleLabel(user.role) : ''}
+              </p>
             </div>
           </div>
           <div className="flex gap-2">
